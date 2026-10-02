@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>EAN Mobilais Skeneris Pro</title>
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -21,7 +20,6 @@
     }
   </script>
 
-  <!-- Bibliotēkas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
@@ -48,7 +46,6 @@
       width: 100% !important;
       height: 100% !important;
     }
-    /* Skārienjutīgo pogu atgriezeniskā saite */
     .numkey:active {
       transform: scale(0.94);
       background-color: rgba(255, 255, 255, 0.18);
@@ -57,7 +54,7 @@
 </head>
 <body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden">
 
-  <!-- 1. Augšējā josla: Statuss un Rīki -->
+  <!-- Augšējā josla -->
   <header class="px-3.5 py-2 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2">
       <div id="mqttStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
@@ -70,31 +67,27 @@
       </div>
     </div>
 
-    <!-- Labā puse: Sinhronizācijas buferis, lēca, zibspuldze, iestatījumi -->
     <div class="flex items-center gap-1.5">
       <div id="syncBadge" class="hidden px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
         <span>⏳</span>
         <span id="unsyncedCount">0</span>
       </div>
 
-      <!-- Kameras lēcas pārslēdzējs (Apejot platleņķi) -->
       <button id="switchCamBtn" onclick="switchCameraLens()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition" title="Pārslēgt lēcu">
         📷
       </button>
 
-      <!-- Zibspuldze -->
       <button id="torchBtn" onclick="toggleTorch()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition" title="Zibspuldze">
         🔦
       </button>
 
-      <!-- Iestatījumi -->
       <button onclick="openSettingsModal()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition">
         ⚙️
       </button>
     </div>
   </header>
 
-  <!-- 2. Režīmu Slēdzis (3 Darba Režīmi) -->
+  <!-- Režīmi -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div class="grid grid-cols-3 gap-1 p-1 bg-slate-900 border border-white/10 rounded-2xl">
       <button id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-1.5 text-xs font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
@@ -109,14 +102,13 @@
     </div>
   </div>
 
-  <!-- 3. Kameras Bloks -->
+  <!-- Kameras zona -->
   <main class="flex-1 flex flex-col px-3 py-1 gap-2 overflow-hidden relative">
     
     <div class="relative w-full aspect-[4/3] max-h-[32vh] bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">
       <div id="reader" class="w-full h-full"></div>
       <div id="scanLaserLine" class="scanner-laser"></div>
       
-      <!-- Mērķēšanas rāmis -->
       <div class="absolute inset-x-12 inset-y-6 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
         <div class="flex justify-between">
           <span class="w-3 h-3 border-t-2 border-l-2 border-emerald-400"></span>
@@ -128,14 +120,12 @@
         </div>
       </div>
 
-      <!-- Kameras pauzes / Fona aizsarga logs -->
       <div id="cameraPausedOverlay" class="hidden absolute inset-0 bg-black/80 backdrop-blur-xs flex flex-col items-center justify-center text-center p-3 z-20">
         <span class="text-3xl text-emerald-400 mb-1">✓</span>
         <p class="text-xs font-bold text-emerald-400 font-mono">Kods fiksēts</p>
         <p class="text-[10px] text-slate-400 mt-0.5">Ievadiet daudzumu</p>
       </div>
 
-      <!-- Ātrā paziņojuma uzplaiksnījums cenu zīmju un pārbaudes režīmā -->
       <div id="toastScanOverlay" class="hidden absolute inset-x-4 top-4 bg-emerald-600/95 text-white p-2.5 rounded-2xl shadow-xl backdrop-blur-md flex items-center justify-between z-30 transition transform">
         <div class="truncate flex-1 pr-2">
           <p id="toastScanTitle" class="text-xs font-bold truncate">Prece</p>
@@ -145,17 +135,18 @@
       </div>
     </div>
 
-    <!-- Kataloga statuss un manuālā ievade -->
     <div class="flex justify-between items-center px-1">
       <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-mono" id="catalogStatsText">Bāze: 0 preces</span>
-      <button onclick="promptManualEan()" class="text-[11px] text-emerald-400 underline font-mono active:text-emerald-300">Ievadīt kodu ar roku ⌨️</button>
+      <button onclick="promptManualEan()" class="text-[11px] text-emerald-400 underline font-mono active:text-emerald-300">Ievadīt ar roku ⌨️</button>
     </div>
 
-    <!-- 4. Pēdējo noskenēto pozīciju saraksts -->
+    <!-- Pēdējās preces ar notīrīšanas pogu -->
     <div class="flex-1 flex flex-col min-h-0 bg-slate-900/80 rounded-2xl border border-white/5 p-2 overflow-hidden">
       <div class="flex items-center justify-between pb-1 border-b border-white/5 text-[10px] uppercase font-bold text-slate-400 font-mono">
-        <span id="listTitleLabel">Pēdējie inventūras skenējumi:</span>
-        <span class="text-slate-500">Pieskaries, lai labotu</span>
+        <span id="listTitleLabel">Pēdējie skenējumi:</span>
+        <button onclick="clearLocalScansHistory()" class="text-[10px] text-red-400 hover:text-red-300 font-mono underline">
+          Notīrīt telefonu 🗑️
+        </button>
       </div>
 
       <div id="recentScansList" class="flex-1 overflow-y-auto divide-y divide-white/5 pr-0.5 space-y-0.5 pt-1">
@@ -165,11 +156,10 @@
 
   </main>
 
-  <!-- 5. MODĀLIS: Preces kartīte un iebūvētā ergonomiskā ciparnīca (ar kg atbalstu) -->
+  <!-- Ciparnīcas Modālis -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/15 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       
-      <!-- Preces info -->
       <div class="p-2.5 rounded-2xl bg-white/5 border border-white/10 space-y-0.5">
         <div class="flex items-start justify-between gap-2">
           <h2 id="modalItemName" class="text-xs sm:text-sm font-bold text-white leading-tight line-clamp-2">Prece...</h2>
@@ -178,7 +168,6 @@
         <p id="modalItemEan" class="text-[11px] font-mono text-slate-400 tracking-wider">0000000000000</p>
       </div>
 
-      <!-- Nezināmas preces foto un nosaukuma lauks -->
       <div id="unknownItemBlock" class="hidden space-y-1.5 p-2 rounded-2xl bg-amber-500/10 border border-amber-500/30">
         <p class="text-[11px] font-bold text-amber-400 flex items-center gap-1">
           <span>⚠️</span> <span>Prece nav bāzē!</span>
@@ -196,7 +185,6 @@
         </div>
       </div>
 
-      <!-- Ievadītā daudzuma rādītājs -->
       <div class="flex items-center justify-between px-3 py-1.5 bg-black/60 rounded-2xl border border-white/10">
         <span class="text-[11px] font-mono uppercase font-bold text-slate-400">Daudzums:</span>
         <div class="flex items-baseline gap-1">
@@ -205,7 +193,6 @@
         </div>
       </div>
 
-      <!-- Ātrie svara / skaita soļi -->
       <div class="grid grid-cols-4 gap-1.5">
         <button onclick="addPresetQty(0.5)" class="py-1 bg-white/5 hover:bg-white/10 rounded-xl text-[11px] font-mono text-slate-300 border border-white/5 active:scale-95">+0.5</button>
         <button onclick="addPresetQty(1.0)" class="py-1 bg-white/5 hover:bg-white/10 rounded-xl text-[11px] font-mono text-slate-300 border border-white/5 active:scale-95">+1.0</button>
@@ -213,7 +200,6 @@
         <button onclick="addPresetQty(10.0)" class="py-1 bg-white/5 hover:bg-white/10 rounded-xl text-[11px] font-mono text-slate-300 border border-white/5 active:scale-95">+10</button>
       </div>
 
-      <!-- IEBŪVĒTĀ SKĀRIENCIENĪTĀ CIPARNĪCA -->
       <div class="grid grid-cols-3 gap-1.5 pt-0.5">
         <button onclick="pressDigit('1')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">1</button>
         <button onclick="pressDigit('2')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">2</button>
@@ -229,7 +215,6 @@
         <button onclick="pressBackspace()" class="numkey py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-sm font-bold font-mono transition">⌫</button>
       </div>
 
-      <!-- Darbības pogas -->
       <div class="flex gap-2 pt-1">
         <button onclick="cancelScan()" class="w-1/3 py-2.5 rounded-2xl bg-white/10 text-slate-300 text-xs font-bold active:scale-95 transition">
           Atcelt
@@ -242,7 +227,7 @@
     </div>
   </div>
 
-  <!-- 6. MODĀLIS: Ieraksta labošana -->
+  <!-- Pozīcijas labošana -->
   <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-3">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/15 rounded-3xl p-4 space-y-3 shadow-2xl">
       <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
@@ -272,7 +257,7 @@
     </div>
   </div>
 
-  <!-- 7. MODĀLIS: Iestatījumi -->
+  <!-- Iestatījumi -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-white/15 rounded-3xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -312,7 +297,6 @@
     </div>
   </div>
 
-  <!-- JavaScript dzinējs -->
   <script>
     let html5QrScanner = null;
     let mqttClient = null;
@@ -325,16 +309,13 @@
     let isCameraRunning = false;
     let wakeLock = null;
 
-    // Kameras un lēcu stāvoklis
     let availableCameras = [];
     let currentCameraIndex = 0;
     let keypadValue = "1";
     let isKeypadResetOnNextDigit = true;
 
-    // Darba režīms: 'inventory' | 'labels' | 'pricecheck'
     let appMode = localStorage.getItem('ean_app_mode') || 'inventory';
 
-    // 1. Režīmu pārvaldība
     function setAppMode(mode) {
       appMode = mode;
       localStorage.setItem('ean_app_mode', mode);
@@ -356,30 +337,26 @@
       const titleEl = document.getElementById('listTitleLabel');
       if (titleEl) {
         if (mode === 'inventory') titleEl.innerText = "Pēdējie inventūras skenējumi:";
-        else if (mode === 'labels') titleEl.innerText = "Cenu zīmju drukas rinda:";
-        else titleEl.innerText = "Pēdējās pārbaudītās preces:";
+        else if (mode === 'labels') titleEl.innerText = "Cenu zīmju rinda:";
+        else titleEl.innerText = "Pārbaudītās preces:";
       }
 
       renderRecentScans();
     }
 
-    // 2. Fona kļūdu bloķētājs (Visibility & Freeze novēršana)
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'hidden') {
-        // Lietotne minimizēta: tīri apturam kameru, lai OS neatņemtu resursu ar kļūdu
         await stopCameraSafely();
       } else if (document.visibilityState === 'visible') {
-        // Lietotne atvērta: automātiski atjaunojam kameru
         requestWakeLock();
         setTimeout(() => {
-          if (!isCameraRunning) {
+          if (!isCameraRunning && !activeScanData) {
             startCameraWithSelectedLens();
           }
         }, 300);
       }
     });
 
-    // 3. Audio & Haptic
     function playAudioTone(type = 'success') {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -413,10 +390,9 @@
       else if (type === 'warning') navigator.vibrate([70, 50, 70]);
     }
 
-    // 4. IndexedDB
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v2', 1);
+        const req = indexedDB.open('EanScannerDB_v3', 1);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -508,7 +484,18 @@
       if (el) el.innerText = `Bāze: ${localCatalog.size} preces`;
     }
 
-    // 5. Ierīces identifikācija un tīkls
+    // Dzēst tikai vietējo skenēšanas vēsturi
+    async function clearLocalScansHistory() {
+      if (!confirm("Vai tiešām notīrīt skenēšanas sarakstu šajā tālrunī?\n(Datorā dati jau ir saglabāti un netiks dzēsti)")) return;
+      const db = await openDb();
+      const tx = db.transaction('scans', 'readwrite');
+      tx.objectStore('scans').clear();
+      tx.oncomplete = () => {
+        renderRecentScans();
+        updateSyncQueueBadge(0);
+      };
+    }
+
     function getDeviceId() {
       let id = localStorage.getItem('ean_device_id');
       if (!id) {
@@ -573,9 +560,7 @@
             await markScanSyncedInDb(payload.scanId);
             updateSyncQueueBadge();
           }
-        } catch (e) {
-          console.warn('MQTT Parse kļūda:', e);
-        }
+        } catch (e) {}
       });
 
       mqttClient.on('offline', () => updateMqttBadge(false, "Bezsaiste"));
@@ -619,19 +604,12 @@
       }
     }
 
-    // 6. Kameras un Platleņķa (Ultra-Wide) apiešanas loģika
     async function initCameraSystem() {
       try {
         const devices = await Html5Qrcode.getCameras();
-        if (!devices || devices.length === 0) {
-          alert("Kamera nav atrasta!");
-          return;
-        }
+        if (!devices || devices.length === 0) return;
 
-        // Atlasām aizmugurējās kameras
         availableCameras = devices;
-
-        // Gudrā lēcas atlase: Apejam kameras ar vārdiem 'wide', 'ultra', '0.5', 'front'
         let preferredIndex = -1;
         for (let i = 0; i < devices.length; i++) {
           const lbl = (devices[i].label || '').toLowerCase();
@@ -642,18 +620,12 @@
             break;
           }
         }
-
-        if (preferredIndex === -1) {
-          // Ja nosaukumos nav skaidrības, ņemam pirmo aizmugurējo vai pirmo sarakstā
-          preferredIndex = 0;
-        }
+        if (preferredIndex === -1) preferredIndex = 0;
 
         currentCameraIndex = preferredIndex;
         populateCameraDropdown();
         await startCameraWithSelectedLens();
       } catch (err) {
-        console.warn("Kameru enumerācijas kļūda:", err);
-        // Rezerves palaišana ar environment
         startCameraFallback();
       }
     }
@@ -692,17 +664,13 @@
     async function stopCameraSafely() {
       isCameraRunning = false;
       if (html5QrScanner) {
-        try {
-          await html5QrScanner.stop();
-        } catch (e) {}
+        try { await html5QrScanner.stop(); } catch (e) {}
       }
       cameraTrack = null;
     }
 
     async function startCameraWithSelectedLens() {
-      if (!html5QrScanner) {
-        html5QrScanner = new Html5Qrcode("reader");
-      }
+      if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
 
       const cameraId = availableCameras[currentCameraIndex]?.id;
       const cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
@@ -715,40 +683,25 @@
       };
 
       try {
-        await html5QrScanner.start(
-          cameraConfig,
-          scanConfig,
-          onBarcodeDetected,
-          () => {}
-        );
+        await html5QrScanner.start(cameraConfig, scanConfig, onBarcodeDetected, () => {});
         isCameraRunning = true;
         document.getElementById('cameraPausedOverlay').classList.add('hidden');
         document.getElementById('scanLaserLine').classList.remove('hidden');
 
-        // Iegūstam video treku zibspuldzei
         setTimeout(() => {
           try {
             const video = document.querySelector('#reader video');
-            if (video && video.srcObject) {
-              cameraTrack = video.srcObject.getVideoTracks()[0];
-            }
+            if (video && video.srcObject) cameraTrack = video.srcObject.getVideoTracks()[0];
           } catch (e) {}
         }, 600);
-      } catch (err) {
-        console.error("Kameras starts neizdevās:", err);
-      }
+      } catch (err) {}
     }
 
     function startCameraFallback() {
       if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
-      html5QrScanner.start(
-        { facingMode: "environment" },
-        { fps: 20, qrbox: { width: 260, height: 160 } },
-        onBarcodeDetected,
-        () => {}
-      ).then(() => {
+      html5QrScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 260, height: 160 } }, onBarcodeDetected, () => {}).then(() => {
         isCameraRunning = true;
-      }).catch(e => console.error(e));
+      }).catch(e => {});
     }
 
     function pauseCamera() {
@@ -791,7 +744,7 @@
           }
         } catch (e2) {
           isTorchOn = !isTorchOn;
-          alert("Zibspuldze šajā lēcā/pārlūkā netiek atbalstīta.");
+          alert("Zibspuldze šajā ierīcē/lēcā netiek atbalstīta.");
         }
       }
     }
@@ -804,17 +757,16 @@
         : "w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs";
     }
 
-    // 7. Skenēšanas apstrāde un 3 Režīmu loģika
+    // Skenēšanas apstrāde un precīzā cena eiro
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
 
       const item = localCatalog.get(cleanEan);
       const name = item ? item.nosaukums : 'Nezināma prece';
-      // Cena centos pārvērsta eiro
-      const priceEur = item && item.cena ? (Number(item.cena) / 100).toFixed(2) : '0.00';
+      // Cena jau ir glabāta eiro (piemēram, "2.99") — nedalām ar 100!
+      const priceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
-      // REŽĪMS 1: CENU ZĪMJU DRUKA (Automātiski 1 gab., kamera neapstājas)
       if (appMode === 'labels') {
         playAudioTone('success');
         triggerHaptic('short');
@@ -838,7 +790,6 @@
         return;
       }
 
-      // REŽĪMS 2: PĀRBAUDE (Tikai parāda cenu ekrānā bez saglabāšanas)
       if (appMode === 'pricecheck') {
         playAudioTone(item ? 'success' : 'warning');
         triggerHaptic('short');
@@ -846,7 +797,6 @@
         return;
       }
 
-      // REŽĪMS 3: INVENTŪRA (Nopauzē kameru un atver iebūvēto ciparnīcu)
       pauseCamera();
       if (item) {
         playAudioTone('success');
@@ -886,7 +836,6 @@
       if (code && code.trim()) onBarcodeDetected(code.trim());
     }
 
-    // 8. Iebūvētā ergonomiskā ciparnīca (Keypad ar kg komatu)
     function openQtyModal(ean, name, price, isUnknown) {
       activeScanData = { ean, name, price, isUnknown };
       capturedPhotoBase64 = null;
@@ -919,7 +868,7 @@
         else keypadValue = d;
         isKeypadResetOnNextDigit = false;
       } else {
-        if (d === '.' && keypadValue.includes('.')) return; // Tikai viens komats
+        if (d === '.' && keypadValue.includes('.')) return;
         if (keypadValue.length >= 8) return;
         keypadValue += d;
       }
@@ -1023,11 +972,9 @@
       }
     }
 
-    // 9. Pēdējo skenējumu vēsture
     async function renderRecentScans() {
       const list = document.getElementById('recentScansList');
       const all = await getAllScansFromDb();
-      // Filtrējam atbilstoši esošajam režīmam (Inventūra vai Cenu zīmes)
       const currentModeScans = all.filter(x => x.mode === appMode);
       currentModeScans.sort((a, b) => b.timestamp - a.timestamp);
       const recent = currentModeScans.slice(0, 10);
@@ -1045,8 +992,8 @@
 
         const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const syncDot = it.synced 
-          ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Sinhronizēts"></span>` 
-          : `<span class="w-1.5 h-1.5 rounded-full bg-amber-500" title="Gaida sūtīšanu"></span>`;
+          ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>` 
+          : `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>`;
 
         row.innerHTML = `
           <div class="truncate flex-1">
@@ -1064,7 +1011,6 @@
       });
     }
 
-    // 10. Pozīcijas labošana
     async function openEditModal(scanId) {
       const all = await getAllScansFromDb();
       const item = all.find(x => x.id === scanId);
@@ -1139,7 +1085,6 @@
       };
     }
 
-    // 11. Iestatījumi un WakeLock
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
@@ -1189,7 +1134,6 @@
       };
     }
 
-    // Inicializācija pie ielādes
     window.addEventListener('DOMContentLoaded', async () => {
       requestWakeLock();
       updateDeviceHeaderUI();
