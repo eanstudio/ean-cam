@@ -1,0 +1,10 @@
+{
+  "appId": "lv.lubinsh.eancam",
+  "appName": "EAN Skeneris",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
+}
