@@ -24,21 +24,34 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
   <style>
-    @keyframes scanLaser {
-      0% { top: 6%; opacity: 0.8; }
-      50% { top: 92%; opacity: 1; }
-      100% { top: 6%; opacity: 0.8; }
-    }
-    .scanner-laser {
+    /* Aparātlīmenī paātrināta lāzera animācija (GPU 60fps bez aiztures) */
+    .laser-viewport {
       position: absolute;
-      left: 6%;
-      right: 6%;
+      inset: 1.5rem 2.5rem;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 10;
+    }
+    .scanner-laser-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
       height: 2.5px;
       background: #10b981;
       box-shadow: 0 0 14px 3px rgba(16, 185, 129, 0.9);
-      animation: scanLaser 1.4s ease-in-out infinite;
-      pointer-events: none;
-      z-index: 10;
+      will-change: transform;
+      animation: scanLaserGPU 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes scanLaserGPU {
+      0% {
+        transform: translate3d(0, 5px, 0);
+        opacity: 0.7;
+      }
+      100% {
+        transform: translate3d(0, 160px, 0);
+        opacity: 1;
+      }
     }
     #reader video {
       object-fit: cover !important;
@@ -54,13 +67,13 @@
 </head>
 <body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden">
 
-  <!-- Augšējā josla -->
+  <!-- 1. Augšējā josla -->
   <header class="px-3.5 py-2 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2">
       <div id="mqttStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
       <div>
         <div class="flex items-center gap-1.5 leading-none">
-          <span id="displayDeviceId" class="text-xs font-bold font-mono tracking-tight text-white">Ierīce</span>
+          <span id="displayDeviceId" class="text-xs font-bold font-mono tracking-tight text-white cursor-pointer hover:underline" onclick="promptWorkerChange()" title="Mainīt skenētāju">Ierīce</span>
           <span class="text-[10px] text-slate-400 font-mono" id="displayRoomId">(@telpa)</span>
         </div>
         <p id="networkStatusText" class="text-[9px] text-slate-400 font-mono mt-0.5">Savienojas...</p>
@@ -87,7 +100,7 @@
     </div>
   </header>
 
-  <!-- Režīmi -->
+  <!-- 2. Režīmu Slēdzis -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div class="grid grid-cols-3 gap-1 p-1 bg-slate-900 border border-white/10 rounded-2xl">
       <button id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-1.5 text-xs font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
@@ -102,13 +115,18 @@
     </div>
   </div>
 
-  <!-- Kameras zona -->
+  <!-- 3. Kameras Bloks -->
   <main class="flex-1 flex flex-col px-3 py-1 gap-2 overflow-hidden relative">
     
     <div class="relative w-full aspect-[4/3] max-h-[32vh] bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">
       <div id="reader" class="w-full h-full"></div>
-      <div id="scanLaserLine" class="scanner-laser"></div>
       
+      <!-- GPU Lāzera komponents -->
+      <div class="laser-viewport" id="laserContainer">
+        <div id="scanLaserLine" class="scanner-laser-line"></div>
+      </div>
+      
+      <!-- Mērķēšanas rāmis -->
       <div class="absolute inset-x-12 inset-y-6 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
         <div class="flex justify-between">
           <span class="w-3 h-3 border-t-2 border-l-2 border-emerald-400"></span>
@@ -120,16 +138,18 @@
         </div>
       </div>
 
+      <!-- Kameras pauzes pārklājs -->
       <div id="cameraPausedOverlay" class="hidden absolute inset-0 bg-black/80 backdrop-blur-xs flex flex-col items-center justify-center text-center p-3 z-20">
         <span class="text-3xl text-emerald-400 mb-1">✓</span>
         <p class="text-xs font-bold text-emerald-400 font-mono">Kods fiksēts</p>
         <p class="text-[10px] text-slate-400 mt-0.5">Ievadiet daudzumu</p>
       </div>
 
+      <!-- Zibens paziņojums cenu zīmēm un pārbaudei -->
       <div id="toastScanOverlay" class="hidden absolute inset-x-4 top-4 bg-emerald-600/95 text-white p-2.5 rounded-2xl shadow-xl backdrop-blur-md flex items-center justify-between z-30 transition transform">
         <div class="truncate flex-1 pr-2">
           <p id="toastScanTitle" class="text-xs font-bold truncate">Prece</p>
-          <p id="toastScanSub" class="text-[10px] font-mono text-emerald-100">4750000000000 • 0.00 €</p>
+          <p id="toastScanSub" class="text-[10px] font-mono text-emerald-100">0000000000000 • 0.00 €</p>
         </div>
         <span id="toastScanQty" class="px-2 py-0.5 bg-black/30 rounded-lg text-xs font-mono font-bold">+1</span>
       </div>
@@ -142,10 +162,11 @@
 
     <!-- Pēdējās preces ar notīrīšanas pogu -->
     <div class="flex-1 flex flex-col min-h-0 bg-slate-900/80 rounded-2xl border border-white/5 p-2 overflow-hidden">
-      <div class="flex items-center justify-between pb-1 border-b border-white/5 text-[10px] uppercase font-bold text-slate-400 font-mono">
+      <div class="flex items-center justify-between pb-1.5 border-b border-white/5 text-[10px] uppercase font-bold text-slate-400 font-mono">
         <span id="listTitleLabel">Pēdējie skenējumi:</span>
-        <button onclick="clearLocalScansHistory()" class="text-[10px] text-red-400 hover:text-red-300 font-mono underline">
-          Notīrīt telefonu 🗑️
+        <button onclick="clearLocalScansHistory()" class="px-2 py-0.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 active:scale-95 transition flex items-center gap-1">
+          <span>Notīrīt telefonu</span>
+          <span>🗑️</span>
         </button>
       </div>
 
@@ -156,7 +177,26 @@
 
   </main>
 
-  <!-- Ciparnīcas Modālis -->
+  <!-- 4. MODĀLIS: Pieteikšanās (Kas šodien skenēs?) -->
+  <div id="workerLoginModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-xs bg-slate-900 border border-white/15 rounded-3xl p-5 space-y-4 shadow-2xl text-center">
+      <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-2xl shadow-xs">
+        👤
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-white uppercase font-mono tracking-tight">Kas šodien skenēs?</h3>
+        <p class="text-xs text-slate-400 mt-1">Ievadiet savu vārdu vai darbinieka ID numuru:</p>
+      </div>
+      <div>
+        <input type="text" id="loginWorkerInput" placeholder="Vārds vai ID (piem., Jānis)" class="w-full px-3 py-2.5 text-center text-sm bg-black/50 border border-white/20 rounded-xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
+      </div>
+      <button onclick="submitWorkerLogin()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-600/30 active:scale-95">
+        Sākt darbu
+      </button>
+    </div>
+  </div>
+
+  <!-- 5. MODĀLIS: Preces kartīte un ciparnīca -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/15 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       
@@ -227,7 +267,7 @@
     </div>
   </div>
 
-  <!-- Pozīcijas labošana -->
+  <!-- 6. MODĀLIS: Labot ierakstu -->
   <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-3">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/15 rounded-3xl p-4 space-y-3 shadow-2xl">
       <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
@@ -257,7 +297,7 @@
     </div>
   </div>
 
-  <!-- Iestatījumi -->
+  <!-- 7. MODĀLIS: Iestatījumi -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-white/15 rounded-3xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -309,6 +349,11 @@
     let isCameraRunning = false;
     let wakeLock = null;
 
+    // Skenēšanas aizsargslēdzis (Debounce & Cooldown)
+    let isScanCooldown = false;
+    let lastScannedCode = '';
+    let lastScannedTime = 0;
+
     let availableCameras = [];
     let currentCameraIndex = 0;
     let keypadValue = "1";
@@ -316,6 +361,7 @@
 
     let appMode = localStorage.getItem('ean_app_mode') || 'inventory';
 
+    // 1. Režīmi
     function setAppMode(mode) {
       appMode = mode;
       localStorage.setItem('ean_app_mode', mode);
@@ -344,19 +390,63 @@
       renderRecentScans();
     }
 
+    // 2. Darbinieka pieteikšanās modālis pie atvēršanas
+    function checkWorkerLoginOnStartup() {
+      const savedName = localStorage.getItem('ean_device_id') || '';
+      const input = document.getElementById('loginWorkerInput');
+      if (input) input.value = savedName;
+
+      // Vienmēr uzreiz pajautājam, kas skenēs
+      document.getElementById('workerLoginModal').classList.remove('hidden');
+      setTimeout(() => {
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 150);
+    }
+
+    function promptWorkerChange() {
+      const input = document.getElementById('loginWorkerInput');
+      if (input) input.value = getDeviceId();
+      document.getElementById('workerLoginModal').classList.remove('hidden');
+      setTimeout(() => { if (input) { input.focus(); input.select(); } }, 150);
+    }
+
+    function submitWorkerLogin() {
+      const input = document.getElementById('loginWorkerInput');
+      const val = input.value.trim();
+      if (!val) {
+        alert("Lūdzu, ievadiet savu vārdu vai ID numuru!");
+        return;
+      }
+
+      localStorage.setItem('ean_device_id', val);
+      updateDeviceHeaderUI();
+      document.getElementById('workerLoginModal').classList.add('hidden');
+
+      // Savienojamies un palaižam kameru
+      initMqtt();
+      if (!isCameraRunning) {
+        initCameraSystem();
+      }
+    }
+
+    // 3. Fona kļūdu novēršana
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'hidden') {
         await stopCameraSafely();
       } else if (document.visibilityState === 'visible') {
         requestWakeLock();
         setTimeout(() => {
-          if (!isCameraRunning && !activeScanData) {
+          if (!isCameraRunning && !activeScanData && document.getElementById('workerLoginModal').classList.contains('hidden')) {
             startCameraWithSelectedLens();
           }
         }, 300);
       }
     });
 
+    // 4. Audio & Haptic
     function playAudioTone(type = 'success') {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -390,6 +480,7 @@
       else if (type === 'warning') navigator.vibrate([70, 50, 70]);
     }
 
+    // 5. IndexedDB
     function openDb() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open('EanScannerDB_v3', 1);
@@ -484,9 +575,9 @@
       if (el) el.innerText = `Bāze: ${localCatalog.size} preces`;
     }
 
-    // Dzēst tikai vietējo skenēšanas vēsturi
+    // Notīrīt tālruņa vēsturi (Datorā dati paliek drošībā!)
     async function clearLocalScansHistory() {
-      if (!confirm("Vai tiešām notīrīt skenēšanas sarakstu šajā tālrunī?\n(Datorā dati jau ir saglabāti un netiks dzēsti)")) return;
+      if (!confirm("Vai tiešām notīrīt skenēšanas sarakstu šajā tālrunī?\n\n(Datorā dati jau ir saglabāti un netiks dzēsti!)")) return;
       const db = await openDb();
       const tx = db.transaction('scans', 'readwrite');
       tx.objectStore('scans').clear();
@@ -497,12 +588,7 @@
     }
 
     function getDeviceId() {
-      let id = localStorage.getItem('ean_device_id');
-      if (!id) {
-        id = 'Mob-' + Math.floor(100 + Math.random() * 900);
-        localStorage.setItem('ean_device_id', id);
-      }
-      return id;
+      return localStorage.getItem('ean_device_id') || 'Darbinieks';
     }
 
     function getRoomId() {
@@ -676,7 +762,7 @@
       const cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
 
       const scanConfig = {
-        fps: 22,
+        fps: 24,
         qrbox: { width: 260, height: 160 },
         aspectRatio: 1.333,
         experimentalFeatures: { useBarCodeDetectorIfSupported: true }
@@ -757,17 +843,32 @@
         : "w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs";
     }
 
-    // Skenēšanas apstrāde un precīzā cena eiro
+    // 6. Skenēšanas apstrāde ar Cooldown / Debounce aizsardzību
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
 
+      const now = Date.now();
+
+      // Ja šobrīd ir aktīvs cooldown pēc iepriekšējā skenējuma, ignorējam
+      if (isScanCooldown) return;
+
+      // Tam pašam kodam nosakām stingru 2.5s bloķēšanu
+      if (cleanEan === lastScannedCode && (now - lastScannedTime < 2500)) {
+        return;
+      }
+
       const item = localCatalog.get(cleanEan);
       const name = item ? item.nosaukums : 'Nezināma prece';
-      // Cena jau ir glabāta eiro (piemēram, "2.99") — nedalām ar 100!
       const priceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
+      // REŽĪMS: CENU ZĪMJU DRUKA
       if (appMode === 'labels') {
+        // Ieslēdzam 1.4s aizsardzību, lai nepārtraukti neber skenējumus
+        isScanCooldown = true;
+        lastScannedCode = cleanEan;
+        lastScannedTime = now;
+
         playAudioTone('success');
         triggerHaptic('short');
         showScanToast(name, cleanEan, priceEur, 1);
@@ -787,16 +888,32 @@
         sendScanToMqtt(record);
         renderRecentScans();
         updateSyncQueueBadge();
+
+        // Atbrīvojam skeneri pēc 1.4 sekundēm
+        setTimeout(() => {
+          isScanCooldown = false;
+        }, 1400);
         return;
       }
 
+      // REŽĪMS: PĀRBAUDE
       if (appMode === 'pricecheck') {
+        isScanCooldown = true;
+        lastScannedCode = cleanEan;
+        lastScannedTime = now;
+
         playAudioTone(item ? 'success' : 'warning');
         triggerHaptic('short');
         showScanToast(name, cleanEan, priceEur, null);
+
+        setTimeout(() => {
+          isScanCooldown = false;
+        }, 1400);
         return;
       }
 
+      // REŽĪMS: INVENTŪRA (Uzreiz aptur kameru un atver ciparnīcu)
+      isScanCooldown = true;
       pauseCamera();
       if (item) {
         playAudioTone('success');
@@ -828,7 +945,7 @@
       clearTimeout(window._toastTimeout);
       window._toastTimeout = setTimeout(() => {
         overlay.classList.add('hidden');
-      }, 1200);
+      }, 1300);
     }
 
     function promptManualEan() {
@@ -897,6 +1014,7 @@
     function cancelScan() {
       document.getElementById('qtyModal').classList.add('hidden');
       activeScanData = null;
+      isScanCooldown = false;
       resumeCamera();
     }
 
@@ -959,6 +1077,7 @@
 
       document.getElementById('qtyModal').classList.add('hidden');
       activeScanData = null;
+      isScanCooldown = false;
 
       await renderRecentScans();
       updateSyncQueueBadge();
@@ -1141,8 +1260,9 @@
       await loadCatalogFromDb();
       await renderRecentScans();
       await updateSyncQueueBadge();
-      initMqtt();
-      initCameraSystem();
+
+      // Automātiski parādām pieteikšanās modāli
+      checkWorkerLoginOnStartup();
 
       setInterval(() => {
         syncOfflineQueue();
