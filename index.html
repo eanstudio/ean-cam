@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="lv" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>EAN Mobilais Skeneris</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Bibliotēkas: MQTT WSS, Kameras EAN lasītājs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    /* Ergonomisks mobilo ievades lauku stils */
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+      -webkit-appearance: none; 
+      margin: 0; 
+    }
+    @keyframes scanBeam {
+      0% { top: 6%; opacity: 0.8; }
+      50% { top: 90%; opacity: 1; }
+      100% { top: 6%; opacity: 0.8; }
+    }
+    .scanner-laser {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      height: 2px;
+      background: #10b981;
+      box-shadow: 0 0 12px 3px rgba(16, 185, 129, 0.85);
+      animation: scanBeam 1.5s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #reader video {
+      object-fit: cover !important;
+      border-radius: 1.25rem;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-x-hidden">
+
+  <!-- 1. Augšējā statusa josla -->
+  <header class="px-4 py-2.5 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-2">
+      <div id="mqttStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <span id="displayDeviceId" class="text-xs font-bold font-mono tracking-tight text-white">Ierīce</span>
+          <span class="text-[10px] text-slate-400 font-mono" id="displayRoomId">(@telpa)</span>
+        </div>
+        <p id="networkStatusText" class="text-[9px] text-slate-400 font-mono leading-none">Savienojas...</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Sinhronizācijas bufera indikators -->
+      <div id="syncBadge" class="hidden px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+        <span>⏳</span>
+        <span id="unsyncedCount">0</span>
+      </div>
+
+      <!-- Zibspuldzes poga -->
+      <button id="torchBtn" onclick="toggleTorch()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition">
+        🔦
+      </button>
+
+      <!-- Iestatījumu poga -->
+      <button onclick="openSettingsModal()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. Kameras skats -->
+  <main class="flex-1 flex flex-col p-3 gap-3 overflow-hidden relative">
+    
+    <div class="relative w-full aspect-[4/3] max-h-[38vh] bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">
+      <div id="reader" class="w-full h-full"></div>
+      <div id="scanLaserLine" class="scanner-laser"></div>
+      
+      <!-- Mērķēšanas rāmītis -->
+      <div class="absolute inset-x-12 inset-y-8 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
+        <div class="flex justify-between">
+          <span class="w-3 h-3 border-t-2 border-l-2 border-emerald-400"></span>
+          <span class="w-3 h-3 border-t-2 border-r-2 border-emerald-400"></span>
+        </div>
+        <div class="flex justify-between">
+          <span class="w-3 h-3 border-b-2 border-l-2 border-emerald-400"></span>
+          <span class="w-3 h-3 border-b-2 border-r-2 border-emerald-400"></span>
+        </div>
+      </div>
+
+      <!-- Kameras pauzes pārklājs -->
+      <div id="cameraPausedOverlay" class="hidden absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center text-center p-4">
+        <span class="text-3xl mb-1">✓</span>
+        <p class="text-xs font-bold text-emerald-400 font-mono">Kods fiksēts</p>
+        <p class="text-[10px] text-slate-400">Ievadiet daudzumu zemāk</p>
+      </div>
+    </div>
+
+    <!-- Manuālā ievade pogas veidā, ja kods nodilis -->
+    <div class="flex justify-between items-center px-1">
+      <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-mono" id="catalogStatsText">Katalogs: 0 preces</span>
+      <button onclick="promptManualEan()" class="text-[11px] text-emerald-400 underline font-mono">Ievadīt kodu ar roku ⌨️</button>
+    </div>
+
+    <!-- 3. Pēdējo skenējumu vēstures lente (Quick Edit) -->
+    <div class="flex-1 flex flex-col min-h-0 bg-slate-900/80 rounded-2xl border border-white/5 p-2.5 overflow-hidden">
+      <div class="flex items-center justify-between pb-1.5 border-b border-white/5 text-[10px] uppercase font-bold text-slate-400 font-mono">
+        <span>Pēdējās noskenētās pozīcijas:</span>
+        <span class="text-slate-400">Pieskaries, lai labotu</span>
+      </div>
+
+      <div id="recentScansList" class="flex-1 overflow-y-auto divide-y divide-white/5 pr-0.5 space-y-0.5 pt-1">
+        <p class="text-center text-xs text-slate-400 py-6">Vēl nav noskenētu preču</p>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 4. MODĀLIS: Daudzuma ievade & Preces kartīte (Pēc skenēšanas) -->
+  <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-3 sm:p-4">
+    <div class="w-full max-w-md mx-auto bg-slate-900 border border-white/15 rounded-3xl p-4 space-y-3.5 shadow-2xl animate-in slide-in-from-bottom duration-200">
+      
+      <!-- Preces informācijas galvene -->
+      <div id="itemHeaderCard" class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+        <div class="flex items-start justify-between gap-2">
+          <h2 id="modalItemName" class="text-sm font-bold text-white leading-snug line-clamp-2">Preces nosaukums...</h2>
+          <span id="modalStockBadge" class="shrink-0 px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold">Atlikums: 0</span>
+        </div>
+        <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
+          <span id="modalItemEan" class="tracking-wider">4750000000000</span>
+          <span id="modalItemPrice" class="text-slate-300">0.00 €</span>
+        </div>
+      </div>
+
+      <!-- Nezināmas preces papildu ievade -->
+      <div id="unknownItemBlock" class="hidden space-y-2 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+        <p class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+          <span>⚠️</span> <span>Prece nav atlikumu sarakstā!</span>
+        </p>
+        <input type="text" id="manualNameInput" placeholder="Nosaukums (nav obligāts)" class="w-full px-3 py-2 text-xs bg-black/40 border border-amber-500/40 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-400">
+        
+        <div class="flex items-center gap-2">
+          <label class="flex-1 py-2 px-3 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition">
+            <span>📷</span>
+            <span id="photoBtnLabel">Nofotografēt preci</span>
+            <input type="file" id="itemPhotoInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoCaptured(event)">
+          </label>
+          <div id="photoThumbnail" class="hidden w-9 h-9 rounded-xl border border-amber-400/40 overflow-hidden shrink-0">
+            <img id="photoPreviewImg" class="w-full h-full object-cover" src="" alt="preview">
+          </div>
+        </div>
+      </div>
+
+      <!-- Daudzuma ievades lodziņš -->
+      <div>
+        <label class="block text-[10px] uppercase font-bold font-mono text-slate-400 mb-1">Daudzums:</label>
+        <div class="flex items-center gap-2">
+          <button onclick="adjustQty(-1)" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-95 text-xl font-bold text-white transition flex items-center justify-center">-</button>
+          <input type="number" id="qtyInput" step="any" value="1" class="flex-1 h-12 text-center text-2xl font-bold font-mono bg-black/50 border border-white/20 rounded-2xl text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') confirmScan()">
+          <button onclick="adjustQty(1)" class="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-95 text-xl font-bold text-white transition flex items-center justify-center">+</button>
+        </div>
+      </div>
+
+      <!-- Ātrās pogas -->
+      <div class="grid grid-cols-4 gap-2">
+        <button onclick="setQty(1)" class="py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-semibold text-slate-300 border border-white/5 active:scale-95">1</button>
+        <button onclick="adjustQty(5)" class="py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-semibold text-slate-300 border border-white/5 active:scale-95">+5</button>
+        <button onclick="adjustQty(10)" class="py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-semibold text-slate-300 border border-white/5 active:scale-95">+10</button>
+        <button onclick="adjustQty(24)" class="py-2 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-semibold text-slate-300 border border-white/5 active:scale-95">+24</button>
+      </div>
+
+      <!-- Galvenās pogas -->
+      <div class="flex gap-2 pt-1">
+        <button onclick="cancelScan()" class="w-1/3 py-3 rounded-2xl bg-white/10 text-slate-300 text-xs font-bold active:scale-95 transition">
+          Atcelt
+        </button>
+        <button onclick="confirmScan()" class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/30 active:scale-95 transition flex items-center justify-center gap-1.5">
+          <span>✓ Saglabāt</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 5. MODĀLIS: Pozīcijas labošana (Quick Edit) -->
+  <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-3 sm:p-4">
+    <div class="w-full max-w-md mx-auto bg-slate-900 border border-white/15 rounded-3xl p-4 space-y-3.5 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-white/10">
+        <h3 class="text-xs font-bold text-white uppercase font-mono">Labot noskenēto daudzumu</h3>
+        <button onclick="closeEditModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
+      </div>
+
+      <div>
+        <p id="editItemName" class="text-xs font-bold text-white line-clamp-1">Prece</p>
+        <p id="editItemEan" class="text-[10px] font-mono text-slate-400">EAN: 0000000000000</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="adjustEditQty(-1)" class="w-10 h-10 rounded-xl bg-white/10 text-lg font-bold">-</button>
+        <input type="number" id="editQtyInput" step="any" class="flex-1 h-10 text-center text-xl font-bold font-mono bg-black/50 border border-white/20 rounded-xl text-emerald-400 focus:outline-none">
+        <button onclick="adjustEditQty(1)" class="w-10 h-10 rounded-xl bg-white/10 text-lg font-bold">+</button>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="deleteCurrentEditScan()" class="w-1/3 py-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold active:scale-95">
+          Dzēst
+        </button>
+        <button onclick="saveCurrentEditScan()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold active:scale-95">
+          Atjaunot
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. MODĀLIS: Iestatījumi -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-white/15 rounded-3xl p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-white/10">
+        <h3 class="text-xs font-bold text-white uppercase font-mono">Skenera Iestatījumi</h3>
+        <button onclick="closeSettingsModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-400 font-mono mb-1">Ierīces nosaukums / Darbinieks:</label>
+          <input type="text" id="settingDeviceId" class="w-full px-3 py-2 text-xs bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500">
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase font-bold text-slate-400 font-mono mb-1">Veikala / Sesijas ID (Room):</label>
+          <input type="text" id="settingRoomId" class="w-full px-3 py-2 text-xs bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500">
+        </div>
+
+        <div class="pt-2 border-t border-white/5 space-y-2">
+          <button onclick="manualSync()" class="w-full py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs font-semibold text-slate-200">
+            Piespiedu datu sinhronizācija 🔄
+          </button>
+          <button onclick="clearCatalogData()" class="w-full py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400">
+            Iztīrīt lokālo katalogu 🗑️
+          </button>
+        </div>
+      </div>
+
+      <button onclick="saveSettings()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">
+        Saglabāt un aizvērt
+      </button>
+    </div>
+  </div>
+
+  <!-- Galvenais JavaScript dzinējs -->
+  <script>
+    // Globālais stāvoklis
+    let html5QrScanner = null;
+    let mqttClient = null;
+    let isTorchOn = false;
+    let cameraTrack = null;
+    let localCatalog = new Map(); // Ātrais 1ms meklēšanas indekss
+    let activeScanData = null;
+    let currentEditScanId = null;
+    let capturedPhotoBase64 = null;
+    let isCameraRunning = false;
+
+    // Skaņas efekti (Sintetizēti ar Web Audio API, bez ārējiem audio failiem)
+    function playAudioTone(type = 'success') {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        if (type === 'success') {
+          // Augsts, dzidrs pīkstiens
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1760, now);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'warning') {
+          // Dubults zems signāls nezināmai precei
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now); osc.stop(now + 0.23);
+        }
+      } catch (e) {}
+    }
+
+    function triggerHaptic(type = 'short') {
+      if (!navigator.vibrate) return;
+      if (type === 'short') navigator.vibrate(60);
+      else if (type === 'warning') navigator.vibrate([80, 50, 80]);
+    }
+
+    // INDEXEDDB: Dzelžaina bezsaistes atmiņa
+    function openDb() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open('EanScannerDB', 1);
+        req.onupgradeneeded = (e) => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('scans')) {
+            const scansStore = db.createObjectStore('scans', { keyPath: 'id' });
+            scansStore.createIndex('synced', 'synced', { unique: false });
+            scansStore.createIndex('timestamp', 'timestamp', { unique: false });
+          }
+          if (!db.objectStoreNames.contains('catalog')) {
+            db.createObjectStore('catalog', { keyPath: 'ean' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveScanToDb(scanItem) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('scans', 'readwrite');
+        tx.objectStore('scans').put(scanItem);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function getAllScansFromDb() {
+      const db = await openDb();
+      return new Promise((resolve) => {
+        const tx = db.transaction('scans', 'readonly');
+        const req = tx.objectStore('scans').getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+    }
+
+    async function markScanSyncedInDb(id) {
+      const db = await openDb();
+      return new Promise((resolve) => {
+        const tx = db.transaction('scans', 'readwrite');
+        const store = tx.objectStore('scans');
+        const getReq = store.get(id);
+        getReq.onsuccess = () => {
+          if (getReq.result) {
+            const data = getReq.result;
+            data.synced = true;
+            store.put(data);
+          }
+          resolve();
+        };
+        getReq.onerror = () => resolve();
+      });
+    }
+
+    async function loadCatalogFromDb() {
+      const db = await openDb();
+      return new Promise((resolve) => {
+        const tx = db.transaction('catalog', 'readonly');
+        const req = tx.objectStore('catalog').getAll();
+        req.onsuccess = () => {
+          const items = req.result || [];
+          localCatalog.clear();
+          items.forEach(it => localCatalog.set(String(it.ean), it));
+          updateCatalogStatsUI();
+          resolve(localCatalog.size);
+        };
+        req.onerror = () => resolve(0);
+      });
+    }
+
+    async function saveCatalogBatchToDb(items) {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('catalog', 'readwrite');
+        const store = tx.objectStore('catalog');
+        items.forEach(it => store.put(it));
+        tx.oncomplete = () => {
+          items.forEach(it => localCatalog.set(String(it.ean), it));
+          updateCatalogStatsUI();
+          resolve();
+        };
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    function updateCatalogStatsUI() {
+      const el = document.getElementById('catalogStatsText');
+      if (el) el.innerText = `Katalogs: ${localCatalog.size} preces`;
+    }
+
+    // Ierīces un telpas identifikācija
+    function getDeviceId() {
+      let id = localStorage.getItem('ean_device_id');
+      if (!id) {
+        id = 'Mob-' + Math.floor(100 + Math.random() * 900);
+        localStorage.setItem('ean_device_id', id);
+      }
+      return id;
+    }
+
+    function getRoomId() {
+      const hash = window.location.hash.replace('#', '');
+      const params = new URLSearchParams(hash);
+      const roomFromHash = params.get('room');
+      if (roomFromHash) {
+        localStorage.setItem('ean_room_id', roomFromHash);
+        return roomFromHash;
+      }
+      return localStorage.getItem('ean_room_id') || 'veikals-1';
+    }
+
+    function updateDeviceHeaderUI() {
+      document.getElementById('displayDeviceId').innerText = getDeviceId();
+      document.getElementById('displayRoomId').innerText = `(@${getRoomId()})`;
+    }
+
+    // MQTT Hibrīdais savienojums
+    function initMqtt() {
+      const roomId = getRoomId();
+      const deviceId = getDeviceId();
+      const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+
+      if (mqttClient) {
+        try { mqttClient.end(true); } catch (e) {}
+      }
+
+      updateMqttBadge(false, "Savienojas...");
+
+      mqttClient = mqtt.connect(brokerUrl, {
+        clientId: `ean_phone_${deviceId}_${Math.random().toString(36).substring(2, 7)}`,
+        clean: true,
+        connectTimeout: 5000,
+        reconnectPeriod: 2500
+      });
+
+      mqttClient.on('connect', () => {
+        updateMqttBadge(true, "Tiešsaistē");
+        
+        // Abonējam kataloga saņemšanu un datora apstiprinājumus
+        mqttClient.subscribe([
+          `ean2026/${roomId}/catalog`,
+          `ean2026/${roomId}/ack/${deviceId}`
+        ]);
+
+        // Paziņojam datoram, ka esam pieslēgušies
+        mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, time: Date.now() }));
+
+        // Izpūšam neaizsūtītos bezsaistes ierakstus
+        syncOfflineQueue();
+      });
+
+      mqttClient.on('message', async (topic, msg) => {
+        try {
+          const payload = JSON.parse(msg.toString());
+
+          // 1. Dators nosūta preču katalogu
+          if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
+            await saveCatalogBatchToDb(payload.items);
+            playAudioTone('success');
+          }
+
+          // 2. Dators apstiprinājis skenējumu (ACK)
+          if (topic.includes(`/ack/${deviceId}`) && payload.scanId) {
+            await markScanSyncedInDb(payload.scanId);
+            updateSyncQueueBadge();
+          }
+        } catch (e) {
+          console.warn('MQTT Parse kļūda:', e);
+        }
+      });
+
+      mqttClient.on('offline', () => updateMqttBadge(false, "Bezsaiste"));
+      mqttClient.on('error', () => updateMqttBadge(false, "Tīkla kļūda"));
+    }
+
+    function updateMqttBadge(online, text) {
+      const dot = document.getElementById('mqttStatusDot');
+      const label = document.getElementById('networkStatusText');
+      if (dot) dot.className = online ? "w-2.5 h-2.5 rounded-full bg-emerald-500" : "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+      if (label) label.innerText = text;
+    }
+
+    // Bezsaistes rindas sūtītājs
+    async function syncOfflineQueue() {
+      const all = await getAllScansFromDb();
+      const unsynced = all.filter(x => !x.synced);
+      updateSyncQueueBadge(unsynced.length);
+
+      if (unsynced.length === 0 || !mqttClient || !mqttClient.connected) return;
+
+      const roomId = getRoomId();
+      for (const item of unsynced) {
+        mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(item));
+      }
+    }
+
+    async function updateSyncQueueBadge(count = null) {
+      if (count === null) {
+        const all = await getAllScansFromDb();
+        count = all.filter(x => !x.synced).length;
+      }
+      const badge = document.getElementById('syncBadge');
+      const label = document.getElementById('unsyncedCount');
+      if (badge && label) {
+        if (count > 0) {
+          badge.classList.remove('hidden');
+          label.innerText = count;
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+    }
+
+    // Kameras skenēšanas inicializācija
+    function startCamera() {
+      if (html5QrScanner) return;
+
+      html5QrScanner = new Html5Qrcode("reader");
+      const config = {
+        fps: 20,
+        qrbox: { width: 260, height: 160 },
+        aspectRatio: 1.333,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      };
+
+      html5QrScanner.start(
+        { facingMode: "environment" },
+        config,
+        onBarcodeDetected,
+        () => {} // Ignorējam kadrus bez koda
+      ).then(() => {
+        isCameraRunning = true;
+        // Mēģinām iegūt lukturīša (Torch) pieeju
+        try {
+          const stream = html5QrScanner.element.querySelector('video')?.srcObject;
+          if (stream) {
+            cameraTrack = stream.getVideoTracks()[0];
+          }
+        } catch (e) {}
+      }).catch(err => {
+        console.error("Kameras kļūda:", err);
+        alert("Neizdevās palaist kameru. Pārliecinieties, ka atļauja ir dota un lapa ir HTTPS!");
+      });
+    }
+
+    function pauseCamera() {
+      document.getElementById('cameraPausedOverlay').classList.remove('hidden');
+      document.getElementById('scanLaserLine').classList.add('hidden');
+      if (html5QrScanner && isCameraRunning) {
+        try { html5QrScanner.pause(true); } catch (e) {}
+      }
+    }
+
+    function resumeCamera() {
+      document.getElementById('cameraPausedOverlay').classList.add('hidden');
+      document.getElementById('scanLaserLine').classList.remove('hidden');
+      if (html5QrScanner && isCameraRunning) {
+        try { html5QrScanner.resume(); } catch (e) {}
+      }
+    }
+
+    async function toggleTorch() {
+      if (!cameraTrack) return;
+      const capabilities = cameraTrack.getCapabilities ? cameraTrack.getCapabilities() : {};
+      if (!capabilities.torch) {
+        alert("Zibspuldze šajā ierīcē caur pārlūku netiek atbalstīta.");
+        return;
+      }
+      isTorchOn = !isTorchOn;
+      await cameraTrack.applyConstraints({ advanced: [{ torch: isTorchOn }] });
+      document.getElementById('torchBtn').className = isTorchOn 
+        ? "w-8 h-8 rounded-xl bg-amber-500 text-black flex items-center justify-center text-xs shadow-md shadow-amber-500/30"
+        : "w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs";
+    }
+
+    // Loģika pie EAN nolasīšanas (1 ms reakcija)
+    function onBarcodeDetected(decodedText) {
+      const cleanEan = String(decodedText || '').trim();
+      if (!cleanEan) return;
+
+      pauseCamera();
+
+      // Pārbaudām lokālo katalogu
+      const item = localCatalog.get(cleanEan);
+
+      if (item) {
+        playAudioTone('success');
+        triggerHaptic('short');
+        openQtyModal(cleanEan, item.nosaukums, item.atlikums || 0, item.cena || 0, false);
+      } else {
+        playAudioTone('warning');
+        triggerHaptic('warning');
+        openQtyModal(cleanEan, 'Nezināma prece', 0, 0, true);
+      }
+    }
+
+    function promptManualEan() {
+      const code = prompt("Ievadiet svītrkodu (EAN):");
+      if (code && code.trim()) {
+        onBarcodeDetected(code.trim());
+      }
+    }
+
+    // Daudzuma modāļa vadība
+    function openQtyModal(ean, name, stock, price, isUnknown) {
+      activeScanData = { ean, name, stock, price, isUnknown };
+      capturedPhotoBase64 = null;
+
+      document.getElementById('modalItemName').innerText = name;
+      document.getElementById('modalItemEan').innerText = ean;
+      document.getElementById('modalStockBadge').innerText = `Atlikums: ${stock}`;
+      document.getElementById('modalItemPrice').innerText = price ? `${Number(price).toFixed(2)} €` : '';
+
+      const unknownBlock = document.getElementById('unknownItemBlock');
+      const manualName = document.getElementById('manualNameInput');
+      const photoThumb = document.getElementById('photoThumbnail');
+      const photoLabel = document.getElementById('photoBtnLabel');
+
+      if (isUnknown) {
+        unknownBlock.classList.remove('hidden');
+        manualName.value = '';
+        photoThumb.classList.add('hidden');
+        photoLabel.innerText = "Nofotografēt preci";
+      } else {
+        unknownBlock.classList.add('hidden');
+      }
+
+      const qtyInput = document.getElementById('qtyInput');
+      qtyInput.value = "1";
+      document.getElementById('qtyModal').classList.remove('hidden');
+
+      setTimeout(() => {
+        qtyInput.focus();
+        qtyInput.select();
+      }, 100);
+    }
+
+    function adjustQty(delta) {
+      const el = document.getElementById('qtyInput');
+      let val = parseFloat(el.value) || 0;
+      val = Math.max(0.001, val + delta);
+      el.value = Number.isInteger(val) ? val : val.toFixed(2);
+    }
+
+    function setQty(val) {
+      document.getElementById('qtyInput').value = val;
+    }
+
+    function cancelScan() {
+      document.getElementById('qtyModal').classList.add('hidden');
+      activeScanData = null;
+      resumeCamera();
+    }
+
+    // Foto optimizācija nezināmām precēm
+    function handlePhotoCaptured(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Samazinām uz max 1000px, lai neaizņemtu tīklu
+          const maxDim = 1000;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+
+          document.getElementById('photoPreviewImg').src = canvas.toDataURL('image/jpeg', 0.8);
+          document.getElementById('photoThumbnail').classList.remove('hidden');
+          document.getElementById('photoBtnLabel').innerText = "Mainīt foto";
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Skenējuma apstiprināšana un tūlītēja saglabāšana
+    async function confirmScan() {
+      if (!activeScanData) return;
+
+      const qty = parseFloat(document.getElementById('qtyInput').value);
+      if (isNaN(qty) || qty <= 0) {
+        alert("Lūdzu, ievadiet derīgu daudzumu!");
+        return;
+      }
+
+      let finalName = activeScanData.name;
+      if (activeScanData.isUnknown) {
+        const manualName = document.getElementById('manualNameInput').value.trim();
+        if (manualName) finalName = manualName;
+      }
+
+      const scanRecord = {
+        id: 'scan_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        deviceId: getDeviceId(),
+        ean: activeScanData.ean,
+        name: finalName,
+        qty: qty,
+        isUnknown: activeScanData.isUnknown,
+        photoBase64: capturedPhotoBase64 || null,
+        timestamp: Date.now(),
+        synced: false
+      };
+
+      // 1. TŪLĪTĒJA SAGLABĀŠANA TELEFONA INDEXEDDB
+      await saveScanToDb(scanRecord);
+
+      // 2. Nosūtam caur MQTT, ja savienots
+      const roomId = getRoomId();
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(scanRecord));
+      }
+
+      document.getElementById('qtyModal').classList.add('hidden');
+      activeScanData = null;
+
+      await renderRecentScans();
+      updateSyncQueueBadge();
+      resumeCamera();
+    }
+
+    // Pēdējo skenējumu attēlošana
+    async function renderRecentScans() {
+      const list = document.getElementById('recentScansList');
+      const all = await getAllScansFromDb();
+      all.sort((a, b) => b.timestamp - a.timestamp);
+      const recent = all.slice(0, 10);
+
+      if (recent.length === 0) {
+        list.innerHTML = `<p class="text-center text-xs text-slate-400 py-6">Vēl nav noskenētu preču</p>`;
+        return;
+      }
+
+      list.innerHTML = '';
+      recent.forEach(it => {
+        const row = document.createElement('div');
+        row.className = "p-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] active:bg-white/10 flex items-center justify-between gap-2 transition cursor-pointer";
+        row.onclick = () => openEditModal(it.id);
+
+        const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const syncDot = it.synced 
+          ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Sinhronizēts"></span>` 
+          : `<span class="w-1.5 h-1.5 rounded-full bg-amber-500" title="Gaida sūtīšanu"></span>`;
+
+        row.innerHTML = `
+          <div class="truncate flex-1">
+            <div class="flex items-center gap-1.5">
+              ${syncDot}
+              <p class="text-xs font-semibold text-white truncate">${it.name}</p>
+            </div>
+            <p class="text-[10px] font-mono text-slate-400">${it.ean} • <span class="text-slate-400">${timeStr}</span></p>
+          </div>
+          <div class="text-right shrink-0">
+            <span class="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-bold text-xs">${it.qty} gab.</span>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    // Ātrā labošana (Quick Edit)
+    async function openEditModal(scanId) {
+      const all = await getAllScansFromDb();
+      const item = all.find(x => x.id === scanId);
+      if (!item) return;
+
+      currentEditScanId = scanId;
+      document.getElementById('editItemName').innerText = item.name;
+      document.getElementById('editItemEan').innerText = `EAN: ${item.ean}`;
+      document.getElementById('editQtyInput').value = item.qty;
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function adjustEditQty(delta) {
+      const el = document.getElementById('editQtyInput');
+      let val = parseFloat(el.value) || 0;
+      val = Math.max(0.001, val + delta);
+      el.value = Number.isInteger(val) ? val : val.toFixed(2);
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.add('hidden');
+      currentEditScanId = null;
+    }
+
+    async function saveCurrentEditScan() {
+      if (!currentEditScanId) return;
+      const newQty = parseFloat(document.getElementById('editQtyInput').value);
+      if (isNaN(newQty) || newQty <= 0) return;
+
+      const db = await openDb();
+      const tx = db.transaction('scans', 'readwrite');
+      const store = tx.objectStore('scans');
+      const req = store.get(currentEditScanId);
+      req.onsuccess = () => {
+        const data = req.result;
+        if (data) {
+          data.qty = newQty;
+          data.synced = false; // Jāpārsūta labojums uz datoru
+          store.put(data);
+
+          const roomId = getRoomId();
+          if (mqttClient && mqttClient.connected) {
+            mqttClient.publish(`ean2026/${roomId}/scan_update`, JSON.stringify({
+              id: data.id,
+              qty: newQty,
+              deviceId: getDeviceId()
+            }));
+          }
+        }
+        closeEditModal();
+        renderRecentScans();
+        updateSyncQueueBadge();
+      };
+    }
+
+    async function deleteCurrentEditScan() {
+      if (!currentEditScanId || !confirm("Vai tiešām dzēst šo ierakstu?")) return;
+      const db = await openDb();
+      const tx = db.transaction('scans', 'readwrite');
+      tx.objectStore('scans').delete(currentEditScanId);
+      tx.oncomplete = () => {
+        const roomId = getRoomId();
+        if (mqttClient && mqttClient.connected) {
+          mqttClient.publish(`ean2026/${roomId}/scan_delete`, JSON.stringify({
+            id: currentEditScanId,
+            deviceId: getDeviceId()
+          }));
+        }
+        closeEditModal();
+        renderRecentScans();
+        updateSyncQueueBadge();
+      };
+    }
+
+    // Iestatījumu pārvaldība
+    function openSettingsModal() {
+      document.getElementById('settingDeviceId').value = getDeviceId();
+      document.getElementById('settingRoomId').value = getRoomId();
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function saveSettings() {
+      const dev = document.getElementById('settingDeviceId').value.trim();
+      const room = document.getElementById('settingRoomId').value.trim();
+      if (dev) localStorage.setItem('ean_device_id', dev);
+      if (room) {
+        localStorage.setItem('ean_room_id', room);
+        window.location.hash = `#room=${room}`;
+      }
+      updateDeviceHeaderUI();
+      closeSettingsModal();
+      initMqtt();
+    }
+
+    function manualSync() {
+      syncOfflineQueue();
+      alert("Sinhronizācija palaista!");
+    }
+
+    async function clearCatalogData() {
+      if (!confirm("Vai tiešām vēlaties dzēst ielādēto preču katalogu no telefona?")) return;
+      const db = await openDb();
+      const tx = db.transaction('catalog', 'readwrite');
+      tx.objectStore('catalog').clear();
+      tx.oncomplete = () => {
+        localCatalog.clear();
+        updateCatalogStatsUI();
+        alert("Katalogs notīrīts.");
+      };
+    }
+
+    // Palaišanās
+    window.addEventListener('DOMContentLoaded', async () => {
+      updateDeviceHeaderUI();
+      await loadCatalogFromDb();
+      await renderRecentScans();
+      await updateSyncQueueBadge();
+      initMqtt();
+      startCamera();
+
+      // Automātisks fona sinhronizācijas mēģinājums ik pēc 4 sekundēm
+      setInterval(() => {
+        syncOfflineQueue();
+      }, 4000);
+    });
+  </script>
+</body>
+</html>
