@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>EAN Mobilais Skeneris Pro</title>
 
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -20,14 +21,15 @@
     }
   </script>
 
+  <!-- MQTT un Html5-QRCode -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
   <style>
-    /* Aparātlīmenī paātrināta lāzera animācija (GPU 60fps bez aiztures) */
-    .laser-viewport {
+    /* GPU paātrināts lāzers bez procesora noslodzes */
+    .laser-container {
       position: absolute;
-      inset: 1.5rem 2.5rem;
+      inset: 1.5rem 2rem;
       pointer-events: none;
       overflow: hidden;
       z-index: 10;
@@ -37,229 +39,279 @@
       left: 0;
       right: 0;
       top: 0;
-      height: 2.5px;
+      height: 3px;
       background: #10b981;
-      box-shadow: 0 0 14px 3px rgba(16, 185, 129, 0.9);
+      box-shadow: 0 0 16px 4px rgba(16, 185, 129, 0.95);
       will-change: transform;
-      animation: scanLaserGPU 1.5s ease-in-out infinite alternate;
+      animation: scanLaserGPU 1.6s ease-in-out infinite alternate;
     }
     @keyframes scanLaserGPU {
-      0% {
-        transform: translate3d(0, 5px, 0);
-        opacity: 0.7;
-      }
-      100% {
-        transform: translate3d(0, 160px, 0);
-        opacity: 1;
-      }
+      0% { transform: translate3d(0, 4px, 0); opacity: 0.7; }
+      100% { transform: translate3d(0, 150px, 0); opacity: 1; }
     }
     #reader video {
       object-fit: cover !important;
-      border-radius: 1.25rem;
+      border-radius: 1.5rem;
       width: 100% !important;
       height: 100% !important;
     }
-    .numkey:active {
-      transform: scale(0.94);
-      background-color: rgba(255, 255, 255, 0.18);
+    .numbtn:active {
+      transform: scale(0.93);
+      background-color: rgba(255, 255, 255, 0.22);
     }
   </style>
 </head>
-<body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden">
+<body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
 
-  <!-- 1. Augšējā josla -->
-  <header class="px-3.5 py-2 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
-    <div class="flex items-center gap-2">
-      <div id="mqttStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></div>
+  <!-- 1. Augšējā josla: Lielas, ērtas 48px pogas -->
+  <header class="px-3.5 py-2.5 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-2.5">
+      <div id="mqttStatusDot" class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></div>
       <div>
-        <div class="flex items-center gap-1.5 leading-none">
-          <span id="displayDeviceId" class="text-xs font-bold font-mono tracking-tight text-white cursor-pointer hover:underline" onclick="promptWorkerChange()" title="Mainīt skenētāju">Ierīce</span>
-          <span class="text-[10px] text-slate-400 font-mono" id="displayRoomId">(@telpa)</span>
-        </div>
-        <p id="networkStatusText" class="text-[9px] text-slate-400 font-mono mt-0.5">Savienojas...</p>
+        <button onclick="promptWorkerChange()" class="flex items-center gap-1.5 text-left group">
+          <span class="text-xs text-slate-400 font-mono">👤</span>
+          <span id="displayDeviceId" class="text-sm font-bold font-mono tracking-tight text-white group-hover:text-emerald-400 underline decoration-dashed decoration-slate-500 underline-offset-4">Darbinieks</span>
+        </button>
+        <p id="networkStatusText" class="text-[10px] text-slate-400 font-mono leading-none mt-0.5">Savienojas...</p>
       </div>
     </div>
 
-    <div class="flex items-center gap-1.5">
-      <div id="syncBadge" class="hidden px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
+    <!-- Labās puses 48px skārienjutīgie rīki -->
+    <div class="flex items-center gap-2">
+      <!-- Sinhronizācijas buferis -->
+      <div id="syncBadge" class="hidden px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold flex items-center gap-1">
         <span>⏳</span>
         <span id="unsyncedCount">0</span>
       </div>
 
-      <button id="switchCamBtn" onclick="switchCameraLens()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition" title="Pārslēgt lēcu">
+      <!-- Kameras lēca (Apejot platleņķi) -->
+      <button id="switchCamBtn" onclick="switchCameraLens()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Pārslēgt lēcu">
         📷
       </button>
 
-      <button id="torchBtn" onclick="toggleTorch()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition" title="Zibspuldze">
+      <!-- Zibspuldze -->
+      <button id="torchBtn" onclick="toggleTorch()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Zibspuldze">
         🔦
       </button>
 
-      <button onclick="openSettingsModal()" class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs active:bg-white/20 transition">
+      <!-- Iestatījumi -->
+      <button onclick="openSettingsModal()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">
         ⚙️
       </button>
     </div>
   </header>
 
-  <!-- 2. Režīmu Slēdzis -->
-  <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
-    <div class="grid grid-cols-3 gap-1 p-1 bg-slate-900 border border-white/10 rounded-2xl">
-      <button id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-1.5 text-xs font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
+  <!-- 2. Režīmu Slēdzis (Lielas pogas) -->
+  <div class="px-3 pt-2.5 pb-1 shrink-0 bg-slate-950">
+    <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 border border-white/10 rounded-2xl">
+      <button id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 text-xs sm:text-sm font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
         Inventūra
       </button>
-      <button id="modeBtn_labels" onclick="setAppMode('labels')" class="py-1.5 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white">
+      <button id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
         Cenu zīmes
       </button>
-      <button id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-1.5 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white">
+      <button id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
         Pārbaude
       </button>
     </div>
   </div>
 
-  <!-- 3. Kameras Bloks -->
-  <main class="flex-1 flex flex-col px-3 py-1 gap-2 overflow-hidden relative">
+  <!-- 3. Kameras Bloks & Lielā Poga -->
+  <main class="flex-1 flex flex-col px-3 py-1 gap-2.5 overflow-hidden relative">
     
-    <div class="relative w-full aspect-[4/3] max-h-[32vh] bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">
+    <div class="relative w-full aspect-[4/3] max-h-[30vh] bg-black rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex items-center justify-center">
       <div id="reader" class="w-full h-full"></div>
       
-      <!-- GPU Lāzera komponents -->
-      <div class="laser-viewport" id="laserContainer">
+      <div class="laser-container">
         <div id="scanLaserLine" class="scanner-laser-line"></div>
       </div>
       
       <!-- Mērķēšanas rāmis -->
-      <div class="absolute inset-x-12 inset-y-6 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
+      <div class="absolute inset-x-10 inset-y-5 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
         <div class="flex justify-between">
-          <span class="w-3 h-3 border-t-2 border-l-2 border-emerald-400"></span>
-          <span class="w-3 h-3 border-t-2 border-r-2 border-emerald-400"></span>
+          <span class="w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-400"></span>
+          <span class="w-3.5 h-3.5 border-t-2 border-r-2 border-emerald-400"></span>
         </div>
         <div class="flex justify-between">
-          <span class="w-3 h-3 border-b-2 border-l-2 border-emerald-400"></span>
-          <span class="w-3 h-3 border-b-2 border-r-2 border-emerald-400"></span>
+          <span class="w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-400"></span>
+          <span class="w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-400"></span>
         </div>
       </div>
 
       <!-- Kameras pauzes pārklājs -->
-      <div id="cameraPausedOverlay" class="hidden absolute inset-0 bg-black/80 backdrop-blur-xs flex flex-col items-center justify-center text-center p-3 z-20">
+      <div id="cameraPausedOverlay" class="hidden absolute inset-0 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center text-center p-3 z-20">
         <span class="text-3xl text-emerald-400 mb-1">✓</span>
-        <p class="text-xs font-bold text-emerald-400 font-mono">Kods fiksēts</p>
-        <p class="text-[10px] text-slate-400 mt-0.5">Ievadiet daudzumu</p>
+        <p class="text-sm font-bold text-emerald-400 font-mono">Kods fiksēts</p>
+        <p class="text-xs text-slate-400 mt-0.5">Ievadiet daudzumu</p>
       </div>
 
-      <!-- Zibens paziņojums cenu zīmēm un pārbaudei -->
-      <div id="toastScanOverlay" class="hidden absolute inset-x-4 top-4 bg-emerald-600/95 text-white p-2.5 rounded-2xl shadow-xl backdrop-blur-md flex items-center justify-between z-30 transition transform">
+      <!-- Paziņojums cenu zīmēm un pārbaudei -->
+      <div id="toastScanOverlay" class="hidden absolute inset-x-3 top-3 bg-emerald-600/95 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between z-30 transition transform">
         <div class="truncate flex-1 pr-2">
-          <p id="toastScanTitle" class="text-xs font-bold truncate">Prece</p>
-          <p id="toastScanSub" class="text-[10px] font-mono text-emerald-100">0000000000000 • 0.00 €</p>
+          <p id="toastScanTitle" class="text-sm font-bold truncate">Prece</p>
+          <p id="toastScanSub" class="text-xs font-mono text-emerald-100 mt-0.5">0000000000000 • 0.00 €</p>
         </div>
-        <span id="toastScanQty" class="px-2 py-0.5 bg-black/30 rounded-lg text-xs font-mono font-bold">+1</span>
+        <span id="toastScanQty" class="px-2.5 py-1 bg-black/35 rounded-xl text-sm font-mono font-bold">+1</span>
       </div>
     </div>
 
-    <div class="flex justify-between items-center px-1">
-      <span class="text-[10px] uppercase font-bold tracking-wider text-slate-400 font-mono" id="catalogStatsText">Bāze: 0 preces</span>
-      <button onclick="promptManualEan()" class="text-[11px] text-emerald-400 underline font-mono active:text-emerald-300">Ievadīt ar roku ⌨️</button>
+    <!-- LIELĀ, ĒRTĀ POGA: IEVADĪT KODU AR ROKU (Vismaz 50px augsta) -->
+    <div class="w-full">
+      <button onclick="openManualEanModal()" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-600/25 border border-emerald-400/30 flex items-center justify-center gap-2.5 transition">
+        <span class="text-lg">⌨️</span>
+        <span class="uppercase font-mono tracking-wide">Ievadīt kodu ar roku</span>
+      </button>
     </div>
 
-    <!-- Pēdējās preces ar notīrīšanas pogu -->
-    <div class="flex-1 flex flex-col min-h-0 bg-slate-900/80 rounded-2xl border border-white/5 p-2 overflow-hidden">
-      <div class="flex items-center justify-between pb-1.5 border-b border-white/5 text-[10px] uppercase font-bold text-slate-400 font-mono">
-        <span id="listTitleLabel">Pēdējie skenējumi:</span>
-        <button onclick="clearLocalScansHistory()" class="px-2 py-0.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 active:scale-95 transition flex items-center gap-1">
+    <div class="flex justify-between items-center px-1 text-xs font-mono text-slate-400">
+      <span id="catalogStatsText">Bāze: 0 preces</span>
+      <span id="currentRoomText">Telpa: veikals-1</span>
+    </div>
+
+    <!-- 4. Pēdējo noskenēto preču vēsture ar skaidru notīrīšanas pogu -->
+    <div class="flex-1 flex flex-col min-h-0 bg-slate-900/85 rounded-2xl border border-white/10 p-2.5 overflow-hidden">
+      <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
+        <span id="listTitleLabel" class="text-xs font-bold uppercase text-slate-300 font-mono">Pēdējie skenējumi:</span>
+        <button onclick="clearLocalScansHistory()" class="px-2.5 py-1 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1.5">
           <span>Notīrīt telefonu</span>
           <span>🗑️</span>
         </button>
       </div>
 
-      <div id="recentScansList" class="flex-1 overflow-y-auto divide-y divide-white/5 pr-0.5 space-y-0.5 pt-1">
-        <p class="text-center text-xs text-slate-500 py-4">Vēl nav noskenētu preču</p>
+      <div id="recentScansList" class="flex-1 overflow-y-auto divide-y divide-white/5 pr-0.5 space-y-1 pt-1.5">
+        <p class="text-center text-xs text-slate-500 py-6">Vēl nav noskenētu preču</p>
       </div>
     </div>
 
   </main>
 
-  <!-- 4. MODĀLIS: Pieteikšanās (Kas šodien skenēs?) -->
-  <div id="workerLoginModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-xs bg-slate-900 border border-white/15 rounded-3xl p-5 space-y-4 shadow-2xl text-center">
-      <div class="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-2xl shadow-xs">
+  <!-- 5. MODĀLIS: Darbinieka pieteikšanās (TIKAI 1 REIZI SESIJĀ) -->
+  <div id="workerLoginModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
+      <div class="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-3xl shadow-xs">
         👤
       </div>
       <div>
-        <h3 class="text-sm font-bold text-white uppercase font-mono tracking-tight">Kas šodien skenēs?</h3>
+        <h3 class="text-base font-bold text-white uppercase font-mono tracking-tight">Kas šodien skenēs?</h3>
         <p class="text-xs text-slate-400 mt-1">Ievadiet savu vārdu vai darbinieka ID numuru:</p>
       </div>
       <div>
-        <input type="text" id="loginWorkerInput" placeholder="Vārds vai ID (piem., Jānis)" class="w-full px-3 py-2.5 text-center text-sm bg-black/50 border border-white/20 rounded-xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
+        <input type="text" id="loginWorkerInput" placeholder="Vārds vai ID (piem., Jānis)" class="w-full px-4 py-3 text-center text-base bg-black/60 border border-white/20 rounded-2xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
       </div>
-      <button onclick="submitWorkerLogin()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-600/30 active:scale-95">
-        Sākt darbu
+      <button onclick="submitWorkerLogin()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-sm transition shadow-lg shadow-emerald-600/30 active:scale-95">
+        Sākt darbu ✓
       </button>
     </div>
   </div>
 
-  <!-- 5. MODĀLIS: Preces kartīte un ciparnīca -->
-  <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
-    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/15 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
-      
-      <div class="p-2.5 rounded-2xl bg-white/5 border border-white/10 space-y-0.5">
-        <div class="flex items-start justify-between gap-2">
-          <h2 id="modalItemName" class="text-xs sm:text-sm font-bold text-white leading-tight line-clamp-2">Prece...</h2>
-          <span id="modalItemPrice" class="shrink-0 px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-bold">0.00 €</span>
-        </div>
-        <p id="modalItemEan" class="text-[11px] font-mono text-slate-400 tracking-wider">0000000000000</p>
+  <!-- 6. MODĀLIS: Iebūvētā ciparnīca koda ievadei ar roku (SISTĒMAS KLAVIATŪRA BLOĶĒTA) -->
+  <div id="manualEanModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
+    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between pb-1 border-b border-white/10">
+        <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wide">Svītrkoda ievade ar roku</h3>
+        <button onclick="closeManualEanModal()" class="text-slate-400 p-1 text-lg font-bold">✕</button>
       </div>
 
-      <div id="unknownItemBlock" class="hidden space-y-1.5 p-2 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-        <p class="text-[11px] font-bold text-amber-400 flex items-center gap-1">
-          <span>⚠️</span> <span>Prece nav bāzē!</span>
+      <!-- Koda displejs -->
+      <div class="px-3 py-2.5 bg-black/70 rounded-2xl border border-white/15 text-center">
+        <input type="text" id="manualEanDisplay" readonly inputmode="none" value="" placeholder="Skenē vai ievadi..." class="w-full text-center text-2xl font-bold font-mono tracking-widest text-emerald-400 bg-transparent focus:outline-none">
+      </div>
+
+      <!-- Ciparnīca kodam -->
+      <div class="grid grid-cols-3 gap-2">
+        <button onclick="pressEanDigit('1')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
+        <button onclick="pressEanDigit('2')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
+        <button onclick="pressEanDigit('3')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
+        <button onclick="pressEanDigit('4')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
+        <button onclick="pressEanDigit('5')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
+        <button onclick="pressEanDigit('6')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
+        <button onclick="pressEanDigit('7')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
+        <button onclick="pressEanDigit('8')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
+        <button onclick="pressEanDigit('9')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
+        <button onclick="clearEanInput()" class="numbtn py-3 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">C</button>
+        <button onclick="pressEanDigit('0')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
+        <button onclick="backspaceEanInput()" class="numbtn py-3 bg-white/10 text-amber-400 rounded-2xl text-lg font-bold font-mono">⌫</button>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="closeManualEanModal()" class="w-1/3 py-3 rounded-2xl bg-white/10 text-slate-300 text-xs font-bold active:scale-95">
+          Atcelt
+        </button>
+        <button onclick="confirmManualEanSearch()" class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/30 active:scale-95 flex items-center justify-center gap-1.5">
+          <span>Meklēt preci ✓</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. MODĀLIS: Preces kartīte un daudzuma ciparnīca (Variants A — Foto no kadra) -->
+  <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
+    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
+      
+      <!-- Preces informācija (Lieli, salasāmi fonti) -->
+      <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
+        <div class="flex items-start justify-between gap-2">
+          <h2 id="modalItemName" class="text-sm sm:text-base font-bold text-white leading-tight line-clamp-2">Prece...</h2>
+          <span id="modalItemPrice" class="shrink-0 px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-sm font-mono font-bold">0.00 €</span>
+        </div>
+        <p id="modalItemEan" class="text-xs font-mono text-slate-400 tracking-wider">0000000000000</p>
+      </div>
+
+      <!-- Nezināmas preces momentuzņēmums (VARIANTS A — 0 aiztures, nav melnā ekrāna) -->
+      <div id="unknownItemBlock" class="hidden space-y-2 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+        <p class="text-xs font-bold text-amber-400 flex items-center gap-1">
+          <span>⚠️</span> <span>Prece nav atlikumu bāzē!</span>
         </p>
-        <input type="text" id="manualNameInput" placeholder="Nosaukums (nav obligāts)" class="w-full px-2.5 py-1.5 text-xs bg-black/50 border border-amber-500/40 rounded-xl text-white placeholder-slate-500 focus:outline-none">
         
         <div class="flex items-center gap-2">
-          <label class="flex-1 py-1.5 px-2 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer active:scale-95 transition">
-            <span>📷</span> <span id="photoBtnLabel">Nofočēt</span>
-            <input type="file" id="itemPhotoInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoCaptured(event)">
-          </label>
-          <div id="photoThumbnail" class="hidden w-7 h-7 rounded-lg border border-amber-400/40 overflow-hidden shrink-0">
+          <button onclick="captureFreezeFramePhoto()" class="flex-1 py-2 px-3 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition">
+            <span>📷</span>
+            <span id="photoBtnLabel">Uzņemt foto no kameras</span>
+          </button>
+          <div id="photoThumbnail" class="hidden w-9 h-9 rounded-xl border border-amber-400/50 overflow-hidden shrink-0">
             <img id="photoPreviewImg" class="w-full h-full object-cover" src="" alt="preview">
           </div>
         </div>
       </div>
 
-      <div class="flex items-center justify-between px-3 py-1.5 bg-black/60 rounded-2xl border border-white/10">
-        <span class="text-[11px] font-mono uppercase font-bold text-slate-400">Daudzums:</span>
-        <div class="flex items-baseline gap-1">
-          <span id="keypadDisplay" class="text-2xl font-bold font-mono text-emerald-400">1</span>
+      <!-- Daudzuma displejs -->
+      <div class="flex items-center justify-between px-4 py-2 bg-black/70 rounded-2xl border border-white/15">
+        <span class="text-xs font-mono uppercase font-bold text-slate-400">Daudzums:</span>
+        <div class="flex items-baseline gap-1.5">
+          <input type="text" id="keypadDisplay" readonly inputmode="none" value="1" class="text-3xl font-bold font-mono text-emerald-400 bg-transparent text-right w-36 focus:outline-none">
           <span class="text-xs text-slate-400 font-mono">gab / kg</span>
         </div>
       </div>
 
+      <!-- Ātrie soļi (Ērti un lieli) -->
       <div class="grid grid-cols-4 gap-1.5">
-        <button onclick="addPresetQty(0.5)" class="py-1 bg-white/5 hover:bg-white/10 rounded-xl text-[11px] font-mono text-slate-300 border border-white/5 active:scale-95">+0.5</button>
-        <button onclick="addPresetQty(1.0)" class="py-1 bg-white/5 hover:bg-white/10 rounded-xl text-[11px] font-mono text-slate-300 border border-white/5 active:scale-95">+1.0</button>
-        <button onclick="addPresetQty(5.0)" class="py-1 bg-white/5 hover:bg-white/10 rounded-xl text-[11px] font-mono text-slate-300 border border-white/5 active:scale-95">+5</button>
-        <button onclick="addPresetQty(10.0)" class="py-1 bg-white/5 hover:bg-white/10 rounded-xl text-[11px] font-mono text-slate-300 border border-white/5 active:scale-95">+10</button>
+        <button onclick="addPresetQty(0.5)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+0.5</button>
+        <button onclick="addPresetQty(1.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+1.0</button>
+        <button onclick="addPresetQty(5.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+5</button>
+        <button onclick="addPresetQty(10.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+10</button>
       </div>
 
-      <div class="grid grid-cols-3 gap-1.5 pt-0.5">
-        <button onclick="pressDigit('1')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">1</button>
-        <button onclick="pressDigit('2')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">2</button>
-        <button onclick="pressDigit('3')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">3</button>
-        <button onclick="pressDigit('4')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">4</button>
-        <button onclick="pressDigit('5')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">5</button>
-        <button onclick="pressDigit('6')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">6</button>
-        <button onclick="pressDigit('7')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">7</button>
-        <button onclick="pressDigit('8')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">8</button>
-        <button onclick="pressDigit('9')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">9</button>
-        <button onclick="pressDigit('.')" class="numkey py-2.5 bg-white/5 rounded-2xl text-xl font-bold font-mono text-slate-300 transition">.</button>
-        <button onclick="pressDigit('0')" class="numkey py-2.5 bg-white/10 rounded-2xl text-lg font-bold font-mono text-white transition">0</button>
-        <button onclick="pressBackspace()" class="numkey py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-sm font-bold font-mono transition">⌫</button>
+      <!-- Lielā skārienciparnīca -->
+      <div class="grid grid-cols-3 gap-1.5">
+        <button onclick="pressQtyDigit('1')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
+        <button onclick="pressQtyDigit('2')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
+        <button onclick="pressQtyDigit('3')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
+        <button onclick="pressQtyDigit('4')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
+        <button onclick="pressQtyDigit('5')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
+        <button onclick="pressQtyDigit('6')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
+        <button onclick="pressQtyDigit('7')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
+        <button onclick="pressQtyDigit('8')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
+        <button onclick="pressQtyDigit('9')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
+        <button onclick="pressQtyDigit('.')" class="numbtn py-2.5 bg-white/5 rounded-2xl text-2xl font-bold font-mono text-slate-300">.</button>
+        <button onclick="pressQtyDigit('0')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
+        <button onclick="pressQtyBackspace()" class="numbtn py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">⌫</button>
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button onclick="cancelScan()" class="w-1/3 py-2.5 rounded-2xl bg-white/10 text-slate-300 text-xs font-bold active:scale-95 transition">
+        <button onclick="cancelScan()" class="w-1/3 py-3 rounded-2xl bg-white/10 text-slate-300 text-xs font-bold active:scale-95">
           Atcelt
         </button>
-        <button onclick="confirmScan()" class="flex-1 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-600/30 active:scale-95 transition flex items-center justify-center gap-1.5">
+        <button onclick="confirmScan()" class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/30 active:scale-95 flex items-center justify-center gap-1.5">
           <span>✓ Saglabāt</span>
         </button>
       </div>
@@ -267,71 +319,86 @@
     </div>
   </div>
 
-  <!-- 6. MODĀLIS: Labot ierakstu -->
-  <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end p-3">
-    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/15 rounded-3xl p-4 space-y-3 shadow-2xl">
-      <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
+  <!-- 8. MODĀLIS: Labot ierakstu ar to pašu lielo ciparnīcu -->
+  <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
+    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
+      <div class="flex items-center justify-between pb-1 border-b border-white/10">
         <h3 class="text-xs font-bold text-white uppercase font-mono">Labot daudzumu</h3>
-        <button onclick="closeEditModal()" class="text-slate-400 p-1 font-bold">✕</button>
+        <button onclick="closeEditModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
       </div>
 
       <div>
-        <p id="editItemName" class="text-xs font-bold text-white line-clamp-1">Prece</p>
-        <p id="editItemEan" class="text-[10px] font-mono text-slate-400">0000000000000</p>
+        <p id="editItemName" class="text-sm font-bold text-white line-clamp-1">Prece</p>
+        <p id="editItemEan" class="text-xs font-mono text-slate-400">0000000000000</p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button onclick="adjustEditQty(-1)" class="w-11 h-11 rounded-xl bg-white/10 text-lg font-bold text-white">-</button>
-        <input type="number" id="editQtyInput" step="any" class="flex-1 h-11 text-center text-xl font-bold font-mono bg-black/50 border border-white/20 rounded-xl text-emerald-400 focus:outline-none">
-        <button onclick="adjustEditQty(1)" class="w-11 h-11 rounded-xl bg-white/10 text-lg font-bold text-white">+</button>
+      <!-- Daudzuma logs -->
+      <div class="px-4 py-2 bg-black/70 rounded-2xl border border-white/15 text-center">
+        <input type="text" id="editKeypadDisplay" readonly inputmode="none" value="1" class="text-3xl font-bold font-mono text-emerald-400 bg-transparent text-center w-full focus:outline-none">
+      </div>
+
+      <!-- Ciparnīca labošanai -->
+      <div class="grid grid-cols-3 gap-1.5">
+        <button onclick="pressEditDigit('1')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
+        <button onclick="pressEditDigit('2')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
+        <button onclick="pressEditDigit('3')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
+        <button onclick="pressEditDigit('4')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
+        <button onclick="pressEditDigit('5')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
+        <button onclick="pressEditDigit('6')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
+        <button onclick="pressEditDigit('7')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
+        <button onclick="pressEditDigit('8')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
+        <button onclick="pressEditDigit('9')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
+        <button onclick="pressEditDigit('.')" class="numbtn py-2.5 bg-white/5 rounded-2xl text-2xl font-bold font-mono text-slate-300">.</button>
+        <button onclick="pressEditDigit('0')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
+        <button onclick="pressEditBackspace()" class="numbtn py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">⌫</button>
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button onclick="deleteCurrentEditScan()" class="w-1/3 py-2.5 rounded-xl bg-red-500/20 text-red-400 text-xs font-bold active:scale-95">
+        <button onclick="deleteCurrentEditScan()" class="w-1/3 py-2.5 rounded-2xl bg-red-500/20 text-red-400 text-xs font-bold active:scale-95">
           Dzēst
         </button>
-        <button onclick="saveCurrentEditScan()" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold active:scale-95">
-          Atjaunot
+        <button onclick="saveCurrentEditScan()" class="flex-1 py-2.5 rounded-2xl bg-indigo-600 text-white text-xs sm:text-sm font-bold active:scale-95">
+          Atjaunot ✓
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 7. MODĀLIS: Iestatījumi -->
+  <!-- 9. MODĀLIS: Iestatījumi -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="w-full max-w-sm bg-slate-900 border border-white/15 rounded-3xl p-5 space-y-4 shadow-2xl">
+    <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
         <h3 class="text-xs font-bold text-white uppercase font-mono">Iestatījumi</h3>
         <button onclick="closeSettingsModal()" class="text-slate-400 p-1 font-bold">✕</button>
       </div>
 
-      <div class="space-y-3">
+      <div class="space-y-3 text-xs">
         <div>
-          <label class="block text-[10px] uppercase font-bold text-slate-400 font-mono mb-1">Darbinieks / Ierīce:</label>
-          <input type="text" id="settingDeviceId" class="w-full px-3 py-2 text-xs bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none">
+          <label class="block uppercase font-bold text-slate-400 font-mono mb-1">Darbinieks / Ierīce:</label>
+          <input type="text" id="settingDeviceId" class="w-full px-3 py-2 bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none">
         </div>
 
         <div>
-          <label class="block text-[10px] uppercase font-bold text-slate-400 font-mono mb-1">Veikala / Sesijas ID (Room):</label>
-          <input type="text" id="settingRoomId" class="w-full px-3 py-2 text-xs bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none">
+          <label class="block uppercase font-bold text-slate-400 font-mono mb-1">Veikala / Sesijas ID (Room):</label>
+          <input type="text" id="settingRoomId" class="w-full px-3 py-2 bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none">
         </div>
 
         <div>
-          <label class="block text-[10px] uppercase font-bold text-slate-400 font-mono mb-1">Izvēlētā kamera:</label>
-          <select id="cameraSelectDropdown" onchange="onCameraSelectedFromDropdown(this.value)" class="w-full px-3 py-2 text-xs bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none"></select>
+          <label class="block uppercase font-bold text-slate-400 font-mono mb-1">Izvēlētā kamera:</label>
+          <select id="cameraSelectDropdown" onchange="onCameraSelectedFromDropdown(this.value)" class="w-full px-3 py-2 bg-black/40 border border-white/15 rounded-xl text-white font-mono focus:outline-none"></select>
         </div>
 
         <div class="pt-2 border-t border-white/5 space-y-2">
-          <button onclick="manualSync()" class="w-full py-2 rounded-xl bg-white/10 text-xs font-semibold text-slate-200">
+          <button onclick="manualSync()" class="w-full py-2.5 rounded-xl bg-white/10 text-xs font-semibold text-slate-200">
             Piespiedu sinhronizācija 🔄
           </button>
-          <button onclick="clearCatalogData()" class="w-full py-2 rounded-xl bg-red-500/10 text-xs font-semibold text-red-400">
-            Iztīrīt preču katalogu 🗑️
+          <button onclick="clearCatalogData()" class="w-full py-2.5 rounded-xl bg-red-500/10 text-xs font-semibold text-red-400">
+            Iztīrīt preču bāzi 🗑️
           </button>
         </div>
       </div>
 
-      <button onclick="saveSettings()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">
+      <button onclick="saveSettings()" class="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold">
         Saglabāt
       </button>
     </div>
@@ -349,15 +416,19 @@
     let isCameraRunning = false;
     let wakeLock = null;
 
-    // Skenēšanas aizsargslēdzis (Debounce & Cooldown)
     let isScanCooldown = false;
     let lastScannedCode = '';
     let lastScannedTime = 0;
 
     let availableCameras = [];
     let currentCameraIndex = 0;
+
     let keypadValue = "1";
     let isKeypadResetOnNextDigit = true;
+    let manualEanValue = "";
+
+    let editKeypadValue = "1";
+    let isEditKeypadReset = true;
 
     let appMode = localStorage.getItem('ean_app_mode') || 'inventory';
 
@@ -374,9 +445,9 @@
 
       Object.keys(btns).forEach(k => {
         if (k === mode) {
-          btns[k].className = "py-1.5 text-xs font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs";
+          btns[k].className = "py-2 text-xs sm:text-sm font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs";
         } else {
-          btns[k].className = "py-1.5 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white";
+          btns[k].className = "py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white";
         }
       });
 
@@ -390,20 +461,22 @@
       renderRecentScans();
     }
 
-    // 2. Darbinieka pieteikšanās modālis pie atvēršanas
-    function checkWorkerLoginOnStartup() {
+    // 2. Darbinieka pārbaude: TIKAI 1 REIZI SESIJĀ
+    function checkWorkerSessionOnStartup() {
+      const isSessionActive = sessionStorage.getItem('ean_worker_session_active');
       const savedName = localStorage.getItem('ean_device_id') || '';
+
+      if (isSessionActive === 'true' && savedName) {
+        updateDeviceHeaderUI();
+        initMqtt();
+        initCameraSystem();
+        return;
+      }
+
       const input = document.getElementById('loginWorkerInput');
       if (input) input.value = savedName;
-
-      // Vienmēr uzreiz pajautājam, kas skenēs
       document.getElementById('workerLoginModal').classList.remove('hidden');
-      setTimeout(() => {
-        if (input) {
-          input.focus();
-          input.select();
-        }
-      }, 150);
+      setTimeout(() => { if (input) { input.focus(); input.select(); } }, 150);
     }
 
     function promptWorkerChange() {
@@ -422,31 +495,29 @@
       }
 
       localStorage.setItem('ean_device_id', val);
+      sessionStorage.setItem('ean_worker_session_active', 'true');
       updateDeviceHeaderUI();
       document.getElementById('workerLoginModal').classList.add('hidden');
 
-      // Savienojamies un palaižam kameru
       initMqtt();
-      if (!isCameraRunning) {
-        initCameraSystem();
-      }
+      if (!isCameraRunning) initCameraSystem();
     }
 
-    // 3. Fona kļūdu novēršana
+    // 3. Fona kļūdu bloķētājs
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'hidden') {
         await stopCameraSafely();
       } else if (document.visibilityState === 'visible') {
         requestWakeLock();
         setTimeout(() => {
-          if (!isCameraRunning && !activeScanData && document.getElementById('workerLoginModal').classList.contains('hidden')) {
+          if (!isCameraRunning && !activeScanData && sessionStorage.getItem('ean_worker_session_active') === 'true') {
             startCameraWithSelectedLens();
           }
         }, 300);
       }
     });
 
-    // 4. Audio & Haptic
+    // 4. Audio & Vibrācija
     function playAudioTone(type = 'success') {
       try {
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -575,7 +646,7 @@
       if (el) el.innerText = `Bāze: ${localCatalog.size} preces`;
     }
 
-    // Notīrīt tālruņa vēsturi (Datorā dati paliek drošībā!)
+    // Notīrīt tikai telefona skatu
     async function clearLocalScansHistory() {
       if (!confirm("Vai tiešām notīrīt skenēšanas sarakstu šajā tālrunī?\n\n(Datorā dati jau ir saglabāti un netiks dzēsti!)")) return;
       const db = await openDb();
@@ -604,9 +675,10 @@
 
     function updateDeviceHeaderUI() {
       document.getElementById('displayDeviceId').innerText = getDeviceId();
-      document.getElementById('displayRoomId').innerText = `(@${getRoomId()})`;
+      document.getElementById('currentRoomText').innerText = `Telpa: ${getRoomId()}`;
     }
 
+    // 6. MQTT Tīkls
     function initMqtt() {
       const roomId = getRoomId();
       const deviceId = getDeviceId();
@@ -656,7 +728,7 @@
     function updateMqttBadge(online, text) {
       const dot = document.getElementById('mqttStatusDot');
       const label = document.getElementById('networkStatusText');
-      if (dot) dot.className = online ? "w-2.5 h-2.5 rounded-full bg-emerald-500" : "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+      if (dot) dot.className = online ? "w-3 h-3 rounded-full bg-emerald-500" : "w-3 h-3 rounded-full bg-amber-500 animate-pulse";
       if (label) label.innerText = text;
     }
 
@@ -690,6 +762,7 @@
       }
     }
 
+    // 7. Kameras lēcas atlase (Apejot platleņķi)
     async function initCameraSystem() {
       try {
         const devices = await Html5Qrcode.getCameras();
@@ -839,32 +912,25 @@
       const btn = document.getElementById('torchBtn');
       if (!btn) return;
       btn.className = on
-        ? "w-8 h-8 rounded-xl bg-amber-500 text-black flex items-center justify-center text-xs shadow-md shadow-amber-500/30"
-        : "w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center text-xs";
+        ? "w-12 h-12 rounded-2xl bg-amber-500 text-black flex items-center justify-center text-lg shadow-md shadow-amber-500/30"
+        : "w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
-    // 6. Skenēšanas apstrāde ar Cooldown / Debounce aizsardzību
+    // 8. Skenēšanas apstrāde ar Cooldown / Debounce
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
 
       const now = Date.now();
-
-      // Ja šobrīd ir aktīvs cooldown pēc iepriekšējā skenējuma, ignorējam
       if (isScanCooldown) return;
-
-      // Tam pašam kodam nosakām stingru 2.5s bloķēšanu
-      if (cleanEan === lastScannedCode && (now - lastScannedTime < 2500)) {
-        return;
-      }
+      if (cleanEan === lastScannedCode && (now - lastScannedTime < 2400)) return;
 
       const item = localCatalog.get(cleanEan);
       const name = item ? item.nosaukums : 'Nezināma prece';
       const priceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
-      // REŽĪMS: CENU ZĪMJU DRUKA
+      // REŽĪMS: CENU ZĪMES
       if (appMode === 'labels') {
-        // Ieslēdzam 1.4s aizsardzību, lai nepārtraukti neber skenējumus
         isScanCooldown = true;
         lastScannedCode = cleanEan;
         lastScannedTime = now;
@@ -889,10 +955,7 @@
         renderRecentScans();
         updateSyncQueueBadge();
 
-        // Atbrīvojam skeneri pēc 1.4 sekundēm
-        setTimeout(() => {
-          isScanCooldown = false;
-        }, 1400);
+        setTimeout(() => { isScanCooldown = false; }, 1400);
         return;
       }
 
@@ -906,13 +969,11 @@
         triggerHaptic('short');
         showScanToast(name, cleanEan, priceEur, null);
 
-        setTimeout(() => {
-          isScanCooldown = false;
-        }, 1400);
+        setTimeout(() => { isScanCooldown = false; }, 1400);
         return;
       }
 
-      // REŽĪMS: INVENTŪRA (Uzreiz aptur kameru un atver ciparnīcu)
+      // REŽĪMS: INVENTŪRA
       isScanCooldown = true;
       pauseCamera();
       if (item) {
@@ -943,16 +1004,51 @@
 
       overlay.classList.remove('hidden');
       clearTimeout(window._toastTimeout);
-      window._toastTimeout = setTimeout(() => {
-        overlay.classList.add('hidden');
-      }, 1300);
+      window._toastTimeout = setTimeout(() => { overlay.classList.add('hidden'); }, 1300);
     }
 
-    function promptManualEan() {
-      const code = prompt("Ievadiet svītrkodu (EAN):");
-      if (code && code.trim()) onBarcodeDetected(code.trim());
+    // 9. Iebūvētā ciparnīca KODAM AR ROKU (Sistēmas tastatūra bloķēta)
+    function openManualEanModal() {
+      manualEanValue = "";
+      document.getElementById('manualEanDisplay').value = "";
+      document.getElementById('manualEanModal').classList.remove('hidden');
+      pauseCamera();
     }
 
+    function closeManualEanModal() {
+      document.getElementById('manualEanModal').classList.add('hidden');
+      manualEanValue = "";
+      isScanCooldown = false;
+      resumeCamera();
+    }
+
+    function pressEanDigit(d) {
+      if (manualEanValue.length >= 16) return;
+      manualEanValue += d;
+      document.getElementById('manualEanDisplay').value = manualEanValue;
+    }
+
+    function backspaceEanInput() {
+      manualEanValue = manualEanValue.slice(0, -1);
+      document.getElementById('manualEanDisplay').value = manualEanValue;
+    }
+
+    function clearEanInput() {
+      manualEanValue = "";
+      document.getElementById('manualEanDisplay').value = "";
+    }
+
+    function confirmManualEanSearch() {
+      const code = manualEanValue.trim();
+      if (!code) {
+        alert("Lūdzu, ievadiet svītrkodu!");
+        return;
+      }
+      closeManualEanModal();
+      onBarcodeDetected(code);
+    }
+
+    // 10. Preces daudzuma ciparnīca
     function openQtyModal(ean, name, price, isUnknown) {
       activeScanData = { ean, name, price, isUnknown };
       capturedPhotoBase64 = null;
@@ -962,16 +1058,16 @@
       document.getElementById('modalItemName').innerText = name;
       document.getElementById('modalItemEan').innerText = ean;
       document.getElementById('modalItemPrice').innerText = `${price} €`;
-      document.getElementById('keypadDisplay').innerText = keypadValue;
+      document.getElementById('keypadDisplay').value = keypadValue;
 
       const unknownBlock = document.getElementById('unknownItemBlock');
-      const manualName = document.getElementById('manualNameInput');
       const photoThumb = document.getElementById('photoThumbnail');
+      const photoLabel = document.getElementById('photoBtnLabel');
 
       if (isUnknown) {
         unknownBlock.classList.remove('hidden');
-        manualName.value = '';
         photoThumb.classList.add('hidden');
+        photoLabel.innerText = "Uzņemt foto no kameras";
       } else {
         unknownBlock.classList.add('hidden');
       }
@@ -979,7 +1075,7 @@
       document.getElementById('qtyModal').classList.remove('hidden');
     }
 
-    function pressDigit(d) {
+    function pressQtyDigit(d) {
       if (isKeypadResetOnNextDigit) {
         if (d === '.') keypadValue = "0.";
         else keypadValue = d;
@@ -989,10 +1085,10 @@
         if (keypadValue.length >= 8) return;
         keypadValue += d;
       }
-      document.getElementById('keypadDisplay').innerText = keypadValue;
+      document.getElementById('keypadDisplay').value = keypadValue;
     }
 
-    function pressBackspace() {
+    function pressQtyBackspace() {
       if (isKeypadResetOnNextDigit) {
         keypadValue = "0";
         isKeypadResetOnNextDigit = false;
@@ -1000,7 +1096,7 @@
         keypadValue = keypadValue.slice(0, -1);
         if (keypadValue === '' || keypadValue === '-') keypadValue = "0";
       }
-      document.getElementById('keypadDisplay').innerText = keypadValue;
+      document.getElementById('keypadDisplay').value = keypadValue;
     }
 
     function addPresetQty(delta) {
@@ -1008,7 +1104,7 @@
       cur = Math.max(0.001, cur + delta);
       keypadValue = Number.isInteger(cur) ? String(cur) : String(parseFloat(cur.toFixed(3)));
       isKeypadResetOnNextDigit = false;
-      document.getElementById('keypadDisplay').innerText = keypadValue;
+      document.getElementById('keypadDisplay').value = keypadValue;
     }
 
     function cancelScan() {
@@ -1018,30 +1114,30 @@
       resumeCamera();
     }
 
-    function handlePhotoCaptured(event) {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxDim = 900;
-          let w = img.width, h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-            else { w = Math.round((w * maxDim) / h); h = maxDim; }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-          document.getElementById('photoPreviewImg').src = canvas.toDataURL('image/jpeg', 0.8);
-          document.getElementById('photoThumbnail').classList.remove('hidden');
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
+    // VARIANTS A: Kadra tūlītējs momentuzņēmums (Freeze-Frame Snapshot)
+    function captureFreezeFramePhoto() {
+      try {
+        const video = document.querySelector('#reader video');
+        if (!video || video.readyState < 2) {
+          alert("Kameras kadrs nav pieejams!");
+          return;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+
+        document.getElementById('photoPreviewImg').src = canvas.toDataURL('image/jpeg', 0.82);
+        document.getElementById('photoThumbnail').classList.remove('hidden');
+        document.getElementById('photoBtnLabel').innerText = "Mainīt foto";
+        triggerHaptic('short');
+      } catch (err) {
+        console.error("Foto uzņemšanas kļūda:", err);
+      }
     }
 
     async function confirmScan() {
@@ -1052,17 +1148,11 @@
         return;
       }
 
-      let finalName = activeScanData.name;
-      if (activeScanData.isUnknown) {
-        const m = document.getElementById('manualNameInput').value.trim();
-        if (m) finalName = m;
-      }
-
       const scanRecord = {
         id: 'inv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
         deviceId: getDeviceId(),
         ean: activeScanData.ean,
-        name: finalName,
+        name: activeScanData.name,
         price: activeScanData.price,
         qty: qty,
         isUnknown: activeScanData.isUnknown,
@@ -1091,6 +1181,7 @@
       }
     }
 
+    // 11. Pēdējo skenējumu vēsture
     async function renderRecentScans() {
       const list = document.getElementById('recentScansList');
       const all = await getAllScansFromDb();
@@ -1099,54 +1190,75 @@
       const recent = currentModeScans.slice(0, 10);
 
       if (recent.length === 0) {
-        list.innerHTML = `<p class="text-center text-xs text-slate-500 py-4">Šajā režīmā vēl nav skenējumu</p>`;
+        list.innerHTML = `<p class="text-center text-xs text-slate-500 py-6">Šajā režīmā vēl nav skenējumu</p>`;
         return;
       }
 
       list.innerHTML = '';
       recent.forEach(it => {
         const row = document.createElement('div');
-        row.className = "p-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] flex items-center justify-between gap-2 transition cursor-pointer";
+        row.className = "p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] flex items-center justify-between gap-2 transition cursor-pointer";
         row.onclick = () => openEditModal(it.id);
 
         const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const syncDot = it.synced 
-          ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>` 
-          : `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>`;
+          ? `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>` 
+          : `<span class="w-2 h-2 rounded-full bg-amber-500"></span>`;
 
         row.innerHTML = `
           <div class="truncate flex-1">
             <div class="flex items-center gap-1.5">
               ${syncDot}
-              <p class="text-xs font-semibold text-white truncate">${it.name}</p>
+              <p class="text-xs sm:text-sm font-semibold text-white truncate">${it.name}</p>
             </div>
-            <p class="text-[10px] font-mono text-slate-400">${it.ean} • ${it.price || '0.00'} € • ${timeStr}</p>
+            <p class="text-xs font-mono text-slate-400 mt-0.5">${it.ean} • ${it.price || '0.00'} € • ${timeStr}</p>
           </div>
           <div class="text-right shrink-0">
-            <span class="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-bold text-xs">${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}</span>
+            <span class="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-mono font-bold text-xs sm:text-sm">${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}</span>
           </div>
         `;
         list.appendChild(row);
       });
     }
 
+    // 12. Labošana ar to pašu ciparnīcu (Sistēmas tastatūra bloķēta)
     async function openEditModal(scanId) {
       const all = await getAllScansFromDb();
       const item = all.find(x => x.id === scanId);
       if (!item) return;
 
       currentEditScanId = scanId;
+      editKeypadValue = String(item.qty);
+      isEditKeypadReset = true;
+
       document.getElementById('editItemName').innerText = item.name;
       document.getElementById('editItemEan').innerText = `EAN: ${item.ean}`;
-      document.getElementById('editQtyInput').value = item.qty;
+      document.getElementById('editKeypadDisplay').value = editKeypadValue;
       document.getElementById('editModal').classList.remove('hidden');
     }
 
-    function adjustEditQty(delta) {
-      const el = document.getElementById('editQtyInput');
-      let val = parseFloat(el.value) || 0;
-      val = Math.max(0.001, val + delta);
-      el.value = Number.isInteger(val) ? val : val.toFixed(2);
+    function pressEditDigit(d) {
+      if (isEditKeypadReset) {
+        if (d === '.') editKeypadValue = "0.";
+        else editKeypadValue = d;
+        isEditKeypadReset = false;
+      } else {
+        if (d === '.' && editKeypadValue.includes('.')) return;
+        if (editKeypadValue.length >= 8) return;
+        editKeypadValue += d;
+      }
+      document.getElementById('editKeypadDisplay').value = editKeypadValue;
+    }
+
+    function pressEditBackspace() {
+      if (isEditKeypadReset) {
+        editKeypadValue = "0";
+        isEditKeypadReset = false;
+      } else {
+        editKeypadValue = editKeypadValue.slice(0, -1);
+        if (editKeypadValue === '' || editKeypadValue === '-') editKeypadValue = "0";
+      }
+      document.getElementById('editKeypadDisplay').value = editKeypadValue;
     }
 
     function closeEditModal() {
@@ -1156,7 +1268,7 @@
 
     async function saveCurrentEditScan() {
       if (!currentEditScanId) return;
-      const newQty = parseFloat(document.getElementById('editQtyInput').value);
+      const newQty = parseFloat(editKeypadValue);
       if (isNaN(newQty) || newQty <= 0) return;
 
       const db = await openDb();
@@ -1186,7 +1298,7 @@
     }
 
     async function deleteCurrentEditScan() {
-      if (!currentEditScanId || !confirm("Dzēst šo ierakstu?")) return;
+      if (!currentEditScanId || !confirm("Vai tiešām dzēst šo ierakstu?")) return;
       const db = await openDb();
       const tx = db.transaction('scans', 'readwrite');
       tx.objectStore('scans').delete(currentEditScanId);
@@ -1242,31 +1354,28 @@
     }
 
     async function clearCatalogData() {
-      if (!confirm("Vai tiešām dzēst preču katalogu?")) return;
+      if (!confirm("Vai tiešām dzēst preču bāzi?")) return;
       const db = await openDb();
       const tx = db.transaction('catalog', 'readwrite');
       tx.objectStore('catalog').clear();
       tx.oncomplete = () => {
         localCatalog.clear();
         updateCatalogStatsUI();
-        alert("Katalogs notīrīts.");
+        alert("Bāze notīrīta.");
       };
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
       requestWakeLock();
-      updateDeviceHeaderUI();
       setAppMode(appMode);
       await loadCatalogFromDb();
       await renderRecentScans();
       await updateSyncQueueBadge();
 
-      // Automātiski parādām pieteikšanās modāli
-      checkWorkerLoginOnStartup();
+      // Pārbauda vārdu TIKAI VIENREIZ SESIJĀ
+      checkWorkerSessionOnStartup();
 
-      setInterval(() => {
-        syncOfflineQueue();
-      }, 4000);
+      setInterval(() => { syncOfflineQueue(); }, 4000);
     });
   </script>
 </body>
