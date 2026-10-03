@@ -197,7 +197,36 @@
 
   </main>
 
-  <!-- 5. MODĀLIS: Darbinieka pieteikšanās (TIKAI 1 REIZI SESIJĀ) -->
+  <!-- 5. MODĀLIS: Gaida administratora apstiprinājumu datorā (Autorizācijas slūžas) -->
+  <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
+      <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-3xl animate-pulse">
+        ⏳
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-white uppercase font-mono tracking-tight">Gaida apstiprinājumu</h3>
+        <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+          Pieprasījums nosūtīts datoram. Administratoram panelī jānospiež <strong class="text-emerald-400">[✓ Atļaut]</strong>.
+        </p>
+      </div>
+
+      <div class="p-3 bg-black/50 rounded-2xl border border-white/10 text-xs font-mono space-y-1">
+        <p class="text-slate-400">Darbinieks: <strong class="text-white" id="pendingWorkerNameLabel">...</strong></p>
+        <p class="text-slate-400">Ierīces ID: <span class="text-amber-400" id="pendingDeviceIdLabel">...</span></p>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="retryAuthRequest()" class="w-1/2 py-2.5 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold transition">
+          Sūtīt vēlreiz 🔄
+        </button>
+        <button onclick="cancelAuthAndChangeWorker()" class="w-1/2 py-2.5 bg-red-500/20 text-red-400 rounded-xl text-xs font-bold transition">
+          Mainīt vārdu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. MODĀLIS: Darbinieka pieteikšanās (TIKAI 1 REIZI SESIJĀ) -->
   <div id="workerLoginModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-3xl shadow-xs">
@@ -216,7 +245,7 @@
     </div>
   </div>
 
-  <!-- 6. MODĀLIS: Preču meklētājs bāzē -->
+  <!-- 7. MODĀLIS: Preču meklētājs bāzē -->
   <div id="catalogSearchModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col p-3 sm:p-5">
     <div class="w-full max-w-lg mx-auto flex-1 flex flex-col bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 overflow-hidden shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -237,7 +266,7 @@
     </div>
   </div>
 
-  <!-- 7. MODĀLIS: Koda ievade ar roku -->
+  <!-- 8. MODĀLIS: Koda ievade ar roku -->
   <div id="manualEanModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
@@ -275,7 +304,7 @@
     </div>
   </div>
 
-  <!-- 8. MODĀLIS: VARIANTS B (Gudrā divsoļu ievade Daudzumam un Cenai) -->
+  <!-- 9. MODĀLIS: Preces kartīte (Gudrā divsoļu ievade) -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       
@@ -309,7 +338,6 @@
       <div class="flex items-center justify-between px-4 py-2 bg-black/70 rounded-2xl border border-white/15">
         <div class="flex items-center gap-2">
           <span id="activeInputLabel" class="text-xs font-mono uppercase font-bold text-slate-400">Daudzums:</span>
-          <!-- Atpakaļ poga, ja esam cenas solī -->
           <button id="stepBackBtn" onclick="goToStep('qty')" class="hidden text-xs text-emerald-400 underline font-mono">← Daudzums</button>
         </div>
         <div class="flex items-baseline gap-1.5">
@@ -354,7 +382,7 @@
     </div>
   </div>
 
-  <!-- 9. MODĀLIS: Labot ierakstu (Arī Cenu, ja ieslēgta opcija) -->
+  <!-- 10. MODĀLIS: Labot ierakstu -->
   <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
@@ -367,7 +395,7 @@
         <p id="editItemEan" class="text-xs font-mono text-slate-400">0000000000000</p>
       </div>
 
-      <!-- Slēdzis starp daudzumu un cenu, ja atļauta cena -->
+      <!-- Slēdzis starp daudzumu un cenu -->
       <div id="editTargetSwitcher" class="hidden grid grid-cols-2 gap-1.5 p-1 bg-black/60 rounded-2xl border border-white/10">
         <button id="editTargetBtn_qty" onclick="switchEditTarget('qty')" class="py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white">
           Daudzums
@@ -407,7 +435,7 @@
     </div>
   </div>
 
-  <!-- 10. MODĀLIS: Paplašināti Iestatījumi -->
+  <!-- 11. MODĀLIS: Paplašināti Iestatījumi -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -431,7 +459,6 @@
           <select id="cameraSelectDropdown" onchange="onCameraSelectedFromDropdown(this.value)" class="w-full h-12 px-3.5 bg-black/50 border border-white/15 rounded-xl text-white font-mono text-xs sm:text-sm focus:outline-none"></select>
         </div>
 
-        <!-- Slēdzis: Norādīt cenu skenējot -->
         <div class="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-2xl">
           <div>
             <p class="font-bold text-white">Norādīt / mainīt cenu</p>
@@ -440,7 +467,6 @@
           <input type="checkbox" id="settingPricePromptToggle" onchange="togglePricePromptSetting(this.checked)" class="w-6 h-6 rounded-lg text-emerald-600 focus:ring-emerald-500">
         </div>
 
-        <!-- Skaņas slēdzis -->
         <div class="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-2xl">
           <div>
             <p class="font-bold text-white">Skaņas signāls (Pīkstiens)</p>
@@ -477,6 +503,11 @@
     let isCameraRunning = false;
     let wakeLock = null;
 
+    // Autorizācijas stāvoklis un mēģinājumu taimeris (Handshake Retry)
+    let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
+    let authRetryInterval = null;
+
+    // Baterijas taupīšana un dīkstāves taimeris (60s)
     let idleTimer = null;
     let isCameraAsleep = false;
     const IDLE_TIMEOUT_MS = 60000;
@@ -491,7 +522,7 @@
     let availableCameras = [];
     let currentCameraIndex = 0;
 
-    // Variants B: Solis 1 (qty) vai Solis 2 (price)
+    // Divsoļu ievade
     let currentModalStep = 'qty'; // 'qty' | 'price'
     let keypadQtyValue = "1";
     let keypadPriceValue = "0.00";
@@ -499,7 +530,7 @@
     let manualEanValue = "";
 
     // Edit modal stāvoklis
-    let activeEditTarget = 'qty'; // 'qty' | 'price'
+    let activeEditTarget = 'qty';
     let editQtyValue = "1";
     let editPriceValue = "0.00";
     let isEditKeypadReset = true;
@@ -538,7 +569,7 @@
       renderRecentScans();
     }
 
-    // 2. Darbinieka pārbaude (1 reizi sesijā)
+    // 2. Darbinieka pārbaude un Autorizācija ar paneli
     function checkWorkerSessionOnStartup() {
       const isSessionActive = sessionStorage.getItem('ean_worker_session_active');
       const savedName = localStorage.getItem('ean_device_id') || '';
@@ -546,7 +577,13 @@
       if (isSessionActive === 'true' && savedName) {
         updateDeviceHeaderUI();
         initMqtt();
-        initCameraSystem();
+
+        // Ja jau iepriekš sesijā bija apstiprināts
+        if (isDeviceApproved) {
+          initCameraSystem();
+        } else {
+          requestAuthorizationFromAdmin();
+        }
         return;
       }
 
@@ -578,8 +615,75 @@
       document.getElementById('workerLoginModal').classList.add('hidden');
 
       initMqtt();
-      if (!isCameraRunning) initCameraSystem();
+      requestAuthorizationFromAdmin();
       resetActivityTimer();
+    }
+
+    // Autorizācijas slūžas un Handshake Retry (Novērš ieķeršanos)
+    function requestAuthorizationFromAdmin() {
+      if (isDeviceApproved) {
+        document.getElementById('pendingApprovalModal').classList.add('hidden');
+        if (!isCameraRunning) initCameraSystem();
+        return;
+      }
+
+      document.getElementById('pendingWorkerNameLabel').innerText = getDeviceId();
+      document.getElementById('pendingDeviceIdLabel').innerText = getDeviceId();
+      document.getElementById('pendingApprovalModal').classList.remove('hidden');
+
+      sendAuthRequestMqtt();
+
+      // Atkārtots pieprasījums ik pēc 3 sekundēm, lai nepazūd tīkla aiztures dēļ
+      clearInterval(authRetryInterval);
+      authRetryInterval = setInterval(() => {
+        if (!isDeviceApproved) {
+          sendAuthRequestMqtt();
+        } else {
+          clearInterval(authRetryInterval);
+        }
+      }, 3000);
+    }
+
+    function sendAuthRequestMqtt() {
+      if (!mqttClient || !mqttClient.connected) return;
+      const roomId = getRoomId();
+      const deviceId = getDeviceId();
+      mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({
+        deviceId: deviceId,
+        workerName: deviceId,
+        time: Date.now()
+      }));
+    }
+
+    function retryAuthRequest() {
+      sendAuthRequestMqtt();
+    }
+
+    function cancelAuthAndChangeWorker() {
+      clearInterval(authRetryInterval);
+      document.getElementById('pendingApprovalModal').classList.add('hidden');
+      promptWorkerChange();
+    }
+
+    function onAdminAuthorizationGranted() {
+      isDeviceApproved = true;
+      sessionStorage.setItem('ean_device_approved', 'true');
+      clearInterval(authRetryInterval);
+
+      document.getElementById('pendingApprovalModal').classList.add('hidden');
+      playAudioTone('success');
+      triggerHaptic('short');
+
+      if (!isCameraRunning) initCameraSystem();
+    }
+
+    function onAdminAuthorizationRejected() {
+      clearInterval(authRetryInterval);
+      isDeviceApproved = false;
+      sessionStorage.removeItem('ean_device_approved');
+      alert("Administrators datorā noraidīja šīs ierīces pieeju!");
+      document.getElementById('pendingApprovalModal').classList.add('hidden');
+      promptWorkerChange();
     }
 
     // 3. Fona kļūdu bloķētājs & Baterijas vadība
@@ -589,7 +693,7 @@
       } else if (document.visibilityState === 'visible') {
         requestWakeLock();
         setTimeout(() => {
-          if (!isCameraRunning && !activeScanData && !isAnyModalOpen() && !isCameraAsleep) {
+          if (!isCameraRunning && !activeScanData && !isAnyModalOpen() && !isCameraAsleep && isDeviceApproved) {
             startCameraWithSelectedLens();
           }
         }, 300);
@@ -617,7 +721,7 @@
     }
 
     function isAnyModalOpen() {
-      const modalIds = ['workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal'];
+      const modalIds = ['pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal'];
       return modalIds.some(id => {
         const el = document.getElementById(id);
         return el && !el.classList.contains('hidden');
@@ -828,21 +932,37 @@
 
       mqttClient.on('connect', () => {
         updateConnectionStatusUI(true);
+
+        // Abonējam katalogu, ack un personīgo autorizācijas kanālu
         mqttClient.subscribe([
           `ean2026/${roomId}/catalog`,
-          `ean2026/${roomId}/ack/${deviceId}`
+          `ean2026/${roomId}/ack/${deviceId}`,
+          `ean2026/${roomId}/auth/${deviceId}`
         ]);
+
         mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, time: Date.now() }));
         syncOfflineQueue();
+        sendAuthRequestMqtt();
       });
 
       mqttClient.on('message', async (topic, msg) => {
         try {
           const payload = JSON.parse(msg.toString());
+
+          // Autorizācijas atbilde no admin paneļa
+          if (topic.includes(`/auth/${deviceId}`)) {
+            if (payload.approved === true) {
+              onAdminAuthorizationGranted();
+            } else if (payload.approved === false) {
+              onAdminAuthorizationRejected();
+            }
+          }
+
           if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
             await saveCatalogBatchToDb(payload.items);
             playAudioTone('success');
           }
+
           if (topic.includes(`/ack/${deviceId}`) && payload.scanId) {
             await markScanSyncedInDb(payload.scanId);
             const memItem = recentScansMemory.find(x => x.id === payload.scanId);
@@ -889,6 +1009,7 @@
 
     // 7. Kameras lēcas vadība
     async function initCameraSystem() {
+      if (!isDeviceApproved) return;
       try {
         const devices = await Html5Qrcode.getCameras();
         if (!devices || devices.length === 0) return;
@@ -958,7 +1079,7 @@
     }
 
     async function startCameraWithSelectedLens() {
-      if (isAnyModalOpen() || isCameraAsleep) return;
+      if (isAnyModalOpen() || isCameraAsleep || !isDeviceApproved) return;
       if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
 
       const cameraId = availableCameras[currentCameraIndex]?.id;
@@ -1066,7 +1187,6 @@
         lastScannedCode = cleanEan;
         lastScannedTime = now;
 
-        // Ja ir ieslēgta opcija "Norādīt cenu" -> atveras Solis 2 (Cena)
         if (isPricePromptEnabled) {
           openQtyModalVariantsB(cleanEan, name, priceEur, !item, 'price');
           return;
@@ -1114,7 +1234,7 @@
         return;
       }
 
-      // REŽĪMS: INVENTŪRA (Solis 1: Daudzums)
+      // REŽĪMS: INVENTŪRA
       isScanCooldown = true;
       if (item) {
         playAudioTone('success');
@@ -1147,7 +1267,7 @@
       window._toastTimeout = setTimeout(() => { overlay.classList.add('hidden'); }, 1400);
     }
 
-    // 9. Preču meklēšana bāzē (Pārbaudes režīmā uzreiz parāda kartīti bez daudzuma!)
+    // 9. Preču meklēšana bāzē
     async function openCatalogSearchModal() {
       await stopCameraSafely();
       document.getElementById('catalogSearchModal').classList.remove('hidden');
@@ -1203,7 +1323,6 @@
         div.onclick = () => {
           document.getElementById('catalogSearchModal').classList.add('hidden');
 
-          // Pārbaudes režīmā — uzreiz parādām paziņojumu bez daudzuma ievades!
           if (appMode === 'pricecheck') {
             playAudioTone('success');
             triggerHaptic('short');
@@ -1214,7 +1333,6 @@
             return;
           }
 
-          // Citu režīmu gadījumā atveram ievades logu
           const initStep = (appMode === 'labels' && isPricePromptEnabled) ? 'price' : 'qty';
           openQtyModalVariantsB(it.ean, it.nosaukums, priceEur, false, initStep);
         };
@@ -1272,7 +1390,7 @@
       onBarcodeDetected(code);
     }
 
-    // 11. VARIANTS B: GUDRĀ DIVSOĻU IEVADE (Daudzums ➔ Cena)
+    // 11. Divsoļu ievade (Daudzums ➔ Cena)
     async function openQtyModalVariantsB(ean, name, price, isUnknown, initialStep = 'qty') {
       await stopCameraSafely();
 
@@ -1319,20 +1437,17 @@
         presetsBar.classList.remove('hidden');
         backBtn.classList.add('hidden');
 
-        // Ja cena ieslēgta, rāda pogu pāriešanai uz cenu, ja nē — uzreiz saglabā
         if (isPricePromptEnabled && appMode === 'inventory') {
           submitText.innerText = "Tālāk: Cena ➔";
         } else {
           submitText.innerText = "✓ Saglabāt";
         }
       } else {
-        // Cenas solis
         label.innerText = "Cena (€):";
         unit.innerText = "€";
         display.value = keypadPriceValue;
         presetsBar.classList.add('hidden');
 
-        // Inventūras režīmā atļaujam atgriezties uz daudzumu
         if (appMode === 'inventory') {
           backBtn.classList.remove('hidden');
         } else {
@@ -1343,12 +1458,10 @@
     }
 
     function handleModalSubmitAction() {
-      // Ja esam daudzuma solī un jāvada cena -> pārejam uz cenu
       if (currentModalStep === 'qty' && isPricePromptEnabled && appMode === 'inventory') {
         goToStep('price');
         return;
       }
-      // Pretējā gadījumā veicam saglabāšanu
       confirmScan();
     }
 
@@ -1509,8 +1622,8 @@
 
         const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit' });
         const syncDot = it.synced 
-          ? `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>` 
-          : `<span class="w-2 h-2 rounded-full bg-amber-500"></span>`;
+          ? `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>` 
+          : `<span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>`;
 
         row.innerHTML = `
           <div class="truncate flex-1">
@@ -1528,7 +1641,7 @@
       });
     }
 
-    // 13. Labošana no saraksta (Daudzums un Cena)
+    // 13. Labošana no saraksta
     async function openEditModal(scanId) {
       await stopCameraSafely();
       const all = await getAllScansFromDb();
@@ -1543,9 +1656,8 @@
       document.getElementById('editItemName').innerText = item.name;
       document.getElementById('editItemEan').innerText = `EAN: ${item.ean}`;
 
-      // Pārslēdzējs starp daudzumu un cenu, ja atļauta cena
       const switcher = document.getElementById('editTargetSwitcher');
-      if (isPricePromptEnabled) {
+      if (isPricePromptEnabled || appMode === 'labels') {
         switcher.classList.remove('hidden');
       } else {
         switcher.classList.add('hidden');
