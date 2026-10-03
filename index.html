@@ -5,13 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>EAN Skeneris</title>
 
-  <!-- PWA parametri -->
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f172a">
 
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -27,7 +25,6 @@
     }
   </script>
 
-  <!-- Bibliotēkas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
@@ -76,28 +73,28 @@
   <header class="px-3.5 py-2.5 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2.5">
       <div id="mqttStatusDot" class="w-3.5 h-3.5 rounded-full bg-amber-500 animate-pulse"></div>
-      <button onclick="promptWorkerChange()" class="text-left group flex items-center gap-1.5">
+      <button type="button" onclick="promptWorkerChange()" class="text-left group flex items-center gap-1.5">
         <span class="text-xs text-slate-400 font-mono">👤</span>
         <span id="displayWorkerName" class="text-sm sm:text-base font-bold font-mono text-white group-hover:text-emerald-400 underline decoration-dashed decoration-slate-500 underline-offset-4">Darbinieks</span>
         <span id="connectionStatusBadge" class="text-xs sm:text-sm font-mono font-semibold text-amber-400">• Bezsaiste</span>
       </button>
     </div>
 
-    <!-- 48px pogas -->
+    <!-- Rīki -->
     <div class="flex items-center gap-2">
       <div id="syncBadge" class="hidden px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold">
         <span id="unsyncedCount">0</span>⏳
       </div>
 
-      <button id="switchCamBtn" onclick="switchCameraLens()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Pārslēgt kameru">
+      <button type="button" id="switchCamBtn" onclick="switchCameraLens()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Pārslēgt kameru">
         📷
       </button>
 
-      <button id="torchBtn" onclick="toggleTorch()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Zibspuldze">
+      <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Zibspuldze">
         🔦
       </button>
 
-      <button onclick="openSettingsModal()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">
+      <button type="button" onclick="openSettingsModal()" class="w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">
         ⚙️
       </button>
     </div>
@@ -106,13 +103,13 @@
   <!-- 2. Režīmu Slēdzis -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 border border-white/10 rounded-2xl">
-      <button id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 text-xs sm:text-sm font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
+      <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 text-xs sm:text-sm font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
         Inventūra
       </button>
-      <button id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
+      <button type="button" id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
         Cenu zīmes
       </button>
-      <button id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
+      <button type="button" id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
         Pārbaude
       </button>
     </div>
@@ -142,7 +139,7 @@
       <div id="cameraSleepOverlay" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-4 z-30">
         <span class="text-3xl mb-1 text-slate-400">💤</span>
         <p class="text-xs sm:text-sm font-bold text-white font-mono">Kamera iemigusi (Baterijas taupīšana)</p>
-        <button onclick="wakeCameraFromSleep()" class="mt-2.5 py-2.5 px-5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg active:scale-95 flex items-center gap-2">
+        <button type="button" onclick="wakeCameraFromSleep()" class="mt-2.5 py-2.5 px-5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-xs sm:text-sm transition shadow-lg active:scale-95 flex items-center gap-2">
           <span>▶</span>
           <span>Ieslēgt kameru</span>
         </button>
@@ -164,12 +161,12 @@
 
     <!-- Pamatpogas -->
     <div class="grid grid-cols-2 gap-2 w-full">
-      <button onclick="openManualEanModal()" class="py-3 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg border border-emerald-400/30 flex items-center justify-center gap-2 transition">
+      <button type="button" onclick="openManualEanModal()" class="py-3 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg border border-emerald-400/30 flex items-center justify-center gap-2 transition">
         <span class="text-base sm:text-lg">⌨️</span>
         <span class="uppercase font-mono tracking-tight">Kods ar roku</span>
       </button>
 
-      <button onclick="openCatalogSearchModal()" class="py-3 px-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg border border-indigo-400/30 flex items-center justify-center gap-2 transition">
+      <button type="button" onclick="openCatalogSearchModal()" class="py-3 px-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg border border-indigo-400/30 flex items-center justify-center gap-2 transition">
         <span class="text-base sm:text-lg">🔍</span>
         <span class="uppercase font-mono tracking-tight">Meklēt bāzē</span>
       </button>
@@ -184,7 +181,7 @@
     <div class="flex-1 flex flex-col min-h-0 bg-slate-900 border border-white/10 rounded-2xl p-2.5 overflow-hidden">
       <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
         <span id="listTitleLabel" class="text-xs font-bold uppercase text-slate-300 font-mono">Pēdējās 20 inventūras preces:</span>
-        <button onclick="clearLocalScansHistory()" class="px-2 py-0.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1">
+        <button type="button" onclick="clearLocalScansHistory()" class="px-2 py-0.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1">
           <span>Notīrīt</span>
           <span>🗑️</span>
         </button>
@@ -216,10 +213,10 @@
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button onclick="retryAuthRequest()" class="w-1/2 py-2.5 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold transition">
+        <button type="button" onclick="retryAuthRequest()" class="w-1/2 py-2.5 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold transition">
           Sūtīt vēlreiz 🔄
         </button>
-        <button onclick="cancelAuthAndChangeWorker()" class="w-1/2 py-2.5 bg-red-500/20 text-red-400 rounded-xl text-xs font-bold transition">
+        <button type="button" onclick="cancelAuthAndChangeWorker()" class="w-1/2 py-2.5 bg-red-500/20 text-red-400 rounded-xl text-xs font-bold transition">
           Mainīt vārdu
         </button>
       </div>
@@ -239,7 +236,7 @@
       <div>
         <input type="text" id="loginWorkerInput" placeholder="Vārds vai ID (piem., Jānis)" class="w-full h-14 px-4 text-center text-lg bg-black/60 border border-white/20 rounded-2xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
       </div>
-      <button onclick="submitWorkerLogin()" class="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-base transition shadow-lg shadow-emerald-600/30 active:scale-95">
+      <button type="button" onclick="submitWorkerLogin()" class="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-base transition shadow-lg shadow-emerald-600/30 active:scale-95">
         Sākt darbu ✓
       </button>
     </div>
@@ -253,7 +250,7 @@
           <span class="text-base text-indigo-400">🔍</span>
           <h3 class="text-sm font-bold text-white uppercase font-mono">Preču bāzes meklētājs</h3>
         </div>
-        <button onclick="closeCatalogSearchModal()" class="w-8 h-8 rounded-xl bg-white/10 text-slate-300 flex items-center justify-center font-bold">✕</button>
+        <button type="button" onclick="closeCatalogSearchModal()" class="w-8 h-8 rounded-xl bg-white/10 text-slate-300 flex items-center justify-center font-bold">✕</button>
       </div>
 
       <div>
@@ -271,7 +268,7 @@
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
         <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wide">Svītrkoda ievade ar roku</h3>
-        <button onclick="closeManualEanModal()" class="text-slate-400 p-1 text-lg font-bold">✕</button>
+        <button type="button" onclick="closeManualEanModal()" class="text-slate-400 p-1 text-lg font-bold">✕</button>
       </div>
 
       <div class="px-3 py-2.5 bg-black/70 rounded-2xl border border-white/15 text-center">
@@ -279,32 +276,32 @@
       </div>
 
       <div class="grid grid-cols-3 gap-2">
-        <button onclick="pressEanDigit('1')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
-        <button onclick="pressEanDigit('2')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
-        <button onclick="pressEanDigit('3')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
-        <button onclick="pressEanDigit('4')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
-        <button onclick="pressEanDigit('5')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
-        <button onclick="pressEanDigit('6')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
-        <button onclick="pressEanDigit('7')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
-        <button onclick="pressEanDigit('8')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
-        <button onclick="pressEanDigit('9')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
-        <button onclick="clearEanInput()" class="numbtn py-3 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">C</button>
-        <button onclick="pressEanDigit('0')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
-        <button onclick="backspaceEanInput()" class="numbtn py-3 bg-white/10 text-amber-400 rounded-2xl text-lg font-bold font-mono">⌫</button>
+        <button type="button" onclick="pressEanDigit('1')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
+        <button type="button" onclick="pressEanDigit('2')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
+        <button type="button" onclick="pressEanDigit('3')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
+        <button type="button" onclick="pressEanDigit('4')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
+        <button type="button" onclick="pressEanDigit('5')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
+        <button type="button" onclick="pressEanDigit('6')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
+        <button type="button" onclick="pressEanDigit('7')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
+        <button type="button" onclick="pressEanDigit('8')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
+        <button type="button" onclick="pressEanDigit('9')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
+        <button type="button" onclick="clearEanInput()" class="numbtn py-3 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">C</button>
+        <button type="button" onclick="pressEanDigit('0')" class="numbtn py-3 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
+        <button type="button" onclick="backspaceEanInput()" class="numbtn py-3 bg-white/10 text-amber-400 rounded-2xl text-lg font-bold font-mono">⌫</button>
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button onclick="closeManualEanModal()" class="w-1/3 py-3 rounded-2xl bg-white/10 text-slate-300 text-xs font-bold active:scale-95">
+        <button type="button" onclick="closeManualEanModal()" class="w-1/3 py-3 rounded-2xl bg-white/10 text-slate-300 text-xs font-bold active:scale-95">
           Atcelt
         </button>
-        <button onclick="confirmManualEanSearch()" class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/30 active:scale-95 flex items-center justify-center gap-1.5">
+        <button type="button" onclick="confirmManualEanSearch()" class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/30 active:scale-95 flex items-center justify-center gap-1.5">
           <span>Meklēt preci ✓</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 9. MODĀLIS: Preces kartīte un atjaunotā foto sadaļa -->
+  <!-- 9. MODĀLIS: Preces kartīte un stabils foto -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       
@@ -316,7 +313,7 @@
         <p id="modalItemEan" class="text-xs font-mono text-slate-400 tracking-wider">0000000000000</p>
       </div>
 
-      <!-- Nezināmas preces foto (Atjaunots stabilais mehānisms) -->
+      <!-- Nezināmas preces foto (Stabilais FileReader risinājums) -->
       <div id="unknownItemBlock" class="hidden space-y-2 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
         <p class="text-xs font-bold text-amber-400 flex items-center gap-1">
           <span>⚠️</span> <span>Prece nav atlikumu bāzē!</span>
@@ -330,7 +327,6 @@
             <img id="photoPreviewImg" class="w-full h-full object-cover" src="" alt="preview">
           </div>
         </div>
-        <!-- Pārbaudītais natīvās kameras ievades lauks -->
         <input type="file" id="nativeCameraInput" accept="image/*" capture="environment" class="hidden" onchange="onNativePhotoCaptured(event)">
       </div>
 
@@ -338,7 +334,7 @@
       <div class="flex items-center justify-between px-4 py-2 bg-black/70 rounded-2xl border border-white/15">
         <div class="flex items-center gap-2">
           <span id="activeInputLabel" class="text-xs font-mono uppercase font-bold text-slate-400">Daudzums:</span>
-          <button id="stepBackBtn" onclick="goToStep('qty')" class="hidden text-xs text-emerald-400 underline font-mono">← Daudzums</button>
+          <button type="button" id="stepBackBtn" onclick="goToStep('qty')" class="hidden text-xs text-emerald-400 underline font-mono">← Daudzums</button>
         </div>
         <div class="flex items-baseline gap-1.5">
           <input type="text" id="keypadDisplay" readonly inputmode="none" value="1" class="text-3xl font-bold font-mono text-emerald-400 bg-transparent text-right w-36 focus:outline-none">
@@ -348,26 +344,26 @@
 
       <!-- Ātrie soļi -->
       <div id="qtyPresetsBar" class="grid grid-cols-4 gap-1.5">
-        <button onclick="addPresetQty(0.5)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+0.5</button>
-        <button onclick="addPresetQty(1.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+1.0</button>
-        <button onclick="addPresetQty(5.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+5</button>
-        <button onclick="addPresetQty(10.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+10</button>
+        <button type="button" onclick="addPresetQty(0.5)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+0.5</button>
+        <button type="button" onclick="addPresetQty(1.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+1.0</button>
+        <button type="button" onclick="addPresetQty(5.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+5</button>
+        <button type="button" onclick="addPresetQty(10.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+10</button>
       </div>
 
       <!-- Lielā ciparnīca -->
       <div class="grid grid-cols-3 gap-1.5">
-        <button onclick="pressQtyDigit('1')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
-        <button onclick="pressQtyDigit('2')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
-        <button onclick="pressQtyDigit('3')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
-        <button onclick="pressQtyDigit('4')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
-        <button onclick="pressQtyDigit('5')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
-        <button onclick="pressQtyDigit('6')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
-        <button onclick="pressQtyDigit('7')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
-        <button onclick="pressQtyDigit('8')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
-        <button onclick="pressQtyDigit('9')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
-        <button onclick="pressQtyDigit('.')" class="numbtn py-2.5 bg-white/5 rounded-2xl text-2xl font-bold font-mono text-slate-300">.</button>
-        <button onclick="pressQtyDigit('0')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
-        <button onclick="pressQtyBackspace()" class="numbtn py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">⌫</button>
+        <button type="button" onclick="pressQtyDigit('1')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
+        <button type="button" onclick="pressQtyDigit('2')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
+        <button type="button" onclick="pressQtyDigit('3')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
+        <button type="button" onclick="pressQtyDigit('4')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
+        <button type="button" onclick="pressQtyDigit('5')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
+        <button type="button" onclick="pressQtyDigit('6')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
+        <button type="button" onclick="pressQtyDigit('7')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
+        <button type="button" onclick="pressQtyDigit('8')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
+        <button type="button" onclick="pressQtyDigit('9')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
+        <button type="button" onclick="pressQtyDigit('.')" class="numbtn py-2.5 bg-white/5 rounded-2xl text-2xl font-bold font-mono text-slate-300">.</button>
+        <button type="button" onclick="pressQtyDigit('0')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
+        <button type="button" onclick="pressQtyBackspace()" class="numbtn py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">⌫</button>
       </div>
 
       <div class="flex gap-2 pt-1">
@@ -387,7 +383,7 @@
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
         <h3 class="text-xs font-bold text-white uppercase font-mono">Labot ierakstu</h3>
-        <button onclick="closeEditModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
+        <button type="button" onclick="closeEditModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
       </div>
 
       <div>
@@ -396,10 +392,10 @@
       </div>
 
       <div id="editTargetSwitcher" class="hidden grid grid-cols-2 gap-1.5 p-1 bg-black/60 rounded-2xl border border-white/10">
-        <button id="editTargetBtn_qty" onclick="switchEditTarget('qty')" class="py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white">
+        <button type="button" id="editTargetBtn_qty" onclick="switchEditTarget('qty')" class="py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white">
           Daudzums
         </button>
-        <button id="editTargetBtn_price" onclick="switchEditTarget('price')" class="py-1 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white">
+        <button type="button" id="editTargetBtn_price" onclick="switchEditTarget('price')" class="py-1 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white">
           Cena (€)
         </button>
       </div>
@@ -409,25 +405,25 @@
       </div>
 
       <div class="grid grid-cols-3 gap-1.5">
-        <button onclick="pressEditDigit('1')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
-        <button onclick="pressEditDigit('2')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
-        <button onclick="pressEditDigit('3')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
-        <button onclick="pressEditDigit('4')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
-        <button onclick="pressEditDigit('5')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
-        <button onclick="pressEditDigit('6')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
-        <button onclick="pressEditDigit('7')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
-        <button onclick="pressEditDigit('8')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
-        <button onclick="pressEditDigit('9')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
-        <button onclick="pressEditDigit('.')" class="numbtn py-2.5 bg-white/5 rounded-2xl text-2xl font-bold font-mono text-slate-300">.</button>
-        <button onclick="pressEditDigit('0')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
-        <button onclick="pressEditBackspace()" class="numbtn py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">⌫</button>
+        <button type="button" onclick="pressEditDigit('1')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">1</button>
+        <button type="button" onclick="pressEditDigit('2')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">2</button>
+        <button type="button" onclick="pressEditDigit('3')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">3</button>
+        <button type="button" onclick="pressEditDigit('4')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">4</button>
+        <button type="button" onclick="pressEditDigit('5')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">5</button>
+        <button type="button" onclick="pressEditDigit('6')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">6</button>
+        <button type="button" onclick="pressEditDigit('7')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">7</button>
+        <button type="button" onclick="pressEditDigit('8')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">8</button>
+        <button type="button" onclick="pressEditDigit('9')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">9</button>
+        <button type="button" onclick="pressEditDigit('.')" class="numbtn py-2.5 bg-white/5 rounded-2xl text-2xl font-bold font-mono text-slate-300">.</button>
+        <button type="button" onclick="pressEditDigit('0')" class="numbtn py-2.5 bg-white/10 rounded-2xl text-xl font-bold font-mono text-white">0</button>
+        <button type="button" onclick="pressEditBackspace()" class="numbtn py-2.5 bg-red-500/20 text-red-400 rounded-2xl text-base font-bold font-mono">⌫</button>
       </div>
 
       <div class="flex gap-2 pt-1">
-        <button onclick="deleteCurrentEditScan()" class="w-1/3 py-2.5 rounded-2xl bg-red-500/20 text-red-400 text-xs font-bold active:scale-95">
+        <button type="button" onclick="deleteCurrentEditScan()" class="w-1/3 py-2.5 rounded-2xl bg-red-500/20 text-red-400 text-xs font-bold active:scale-95">
           Dzēst
         </button>
-        <button onclick="saveCurrentEditScan()" class="flex-1 py-2.5 rounded-2xl bg-indigo-600 text-white text-xs sm:text-sm font-bold active:scale-95">
+        <button type="button" onclick="saveCurrentEditScan()" class="flex-1 py-2.5 rounded-2xl bg-indigo-600 text-white text-xs sm:text-sm font-bold active:scale-95">
           Atjaunot ✓
         </button>
       </div>
@@ -439,7 +435,7 @@
     <div class="w-full max-w-md bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
         <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wider">Iestatījumi</h3>
-        <button onclick="closeSettingsModal()" class="text-slate-400 p-1 text-lg font-bold">✕</button>
+        <button type="button" onclick="closeSettingsModal()" class="text-slate-400 p-1 text-lg font-bold">✕</button>
       </div>
 
       <div class="space-y-3.5 text-xs sm:text-sm">
@@ -475,16 +471,16 @@
         </div>
 
         <div class="pt-2 border-t border-white/5 space-y-2">
-          <button onclick="manualSync()" class="w-full h-12 rounded-2xl bg-white/10 text-xs sm:text-sm font-semibold text-slate-200 active:scale-95 transition">
+          <button type="button" onclick="manualSync()" class="w-full h-12 rounded-2xl bg-white/10 text-xs sm:text-sm font-semibold text-slate-200 active:scale-95 transition">
             Piespiedu sinhronizācija 🔄
           </button>
-          <button onclick="clearCatalogData()" class="w-full h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs sm:text-sm font-semibold text-red-400 active:scale-95 transition">
+          <button type="button" onclick="clearCatalogData()" class="w-full h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs sm:text-sm font-semibold text-red-400 active:scale-95 transition">
             Iztīrīt preču bāzi 🗑️
           </button>
         </div>
       </div>
 
-      <button onclick="saveSettings()" class="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition active:scale-95 shadow-lg shadow-emerald-600/30">
+      <button type="button" onclick="saveSettings()" class="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition active:scale-95 shadow-lg shadow-emerald-600/30">
         Saglabāt un aizvērt ✓
       </button>
     </div>
@@ -502,16 +498,16 @@
     let isCameraRunning = false;
     let wakeLock = null;
 
-    // Autorizācija
+    // Autorizācijas stāvoklis
     let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
     let authRetryInterval = null;
 
-    // Dīkstāves taimeris (60s)
+    // Baterijas taupīšanas dīkstāves taimeris (60s)
     let idleTimer = null;
     let isCameraAsleep = false;
     const IDLE_TIMEOUT_MS = 60000;
 
-    // RAM masīvs: 20 pozīcijas
+    // RAM masīvs: 20 pozīcijas bez lagiem
     let recentScansMemory = [];
 
     let isScanCooldown = false;
@@ -522,7 +518,7 @@
     let currentCameraIndex = 0;
 
     // Divsoļu ievade
-    let currentModalStep = 'qty'; // 'qty' | 'price'
+    let currentModalStep = 'qty';
     let keypadQtyValue = "1";
     let keypadPriceValue = "0.00";
     let isKeypadResetOnNextDigit = true;
@@ -568,17 +564,32 @@
       renderRecentScans();
     }
 
-    // 2. Darbinieka pārbaude
+    // 2. Darbinieka pārbaude un 24h atmiņa (Novērš vaicājumu pie katras atvēršanas)
     function checkWorkerSessionOnStartup() {
       const isSessionActive = sessionStorage.getItem('ean_worker_session_active');
       const savedName = localStorage.getItem('ean_device_id') || '';
+      const lastApprovedTime = parseInt(localStorage.getItem('ean_device_approved_time') || '0');
+      const isStillApproved24h = (Date.now() - lastApprovedTime) < (24 * 60 * 60 * 1000);
+
+      // Ja administrators 24h laikā jau bija apstiprinājis šo darbinieku, uzreiz palaižam kameru
+      if (savedName && isStillApproved24h) {
+        sessionStorage.setItem('ean_worker_session_active', 'true');
+        sessionStorage.setItem('ean_device_approved', 'true');
+        isDeviceApproved = true;
+
+        updateDeviceHeaderUI();
+        initMqtt();
+        setTimeout(() => {
+          initCameraSystem();
+        }, 200);
+        return;
+      }
 
       if (isSessionActive === 'true' && savedName) {
         updateDeviceHeaderUI();
         initMqtt();
-
         if (isDeviceApproved) {
-          initCameraSystem();
+          setTimeout(() => initCameraSystem(), 200);
         } else {
           requestAuthorizationFromAdmin();
         }
@@ -617,11 +628,11 @@
       resetActivityTimer();
     }
 
-    // Autorizācija
+    // Autorizācijas slūžas
     function requestAuthorizationFromAdmin() {
       if (isDeviceApproved) {
         document.getElementById('pendingApprovalModal').classList.add('hidden');
-        if (!isCameraRunning) initCameraSystem();
+        setTimeout(() => { if (!isCameraRunning) initCameraSystem(); }, 150);
         return;
       }
 
@@ -665,25 +676,30 @@
     function onAdminAuthorizationGranted() {
       isDeviceApproved = true;
       sessionStorage.setItem('ean_device_approved', 'true');
+      localStorage.setItem('ean_device_approved_time', Date.now().toString());
       clearInterval(authRetryInterval);
 
       document.getElementById('pendingApprovalModal').classList.add('hidden');
       playAudioTone('success');
       triggerHaptic('short');
 
-      if (!isCameraRunning) initCameraSystem();
+      // Aizture DOM nomierināšanai, lai kamera nekad nepaliktu melna
+      setTimeout(() => {
+        if (!isCameraRunning) initCameraSystem();
+      }, 200);
     }
 
     function onAdminAuthorizationRejected() {
       clearInterval(authRetryInterval);
       isDeviceApproved = false;
       sessionStorage.removeItem('ean_device_approved');
+      localStorage.removeItem('ean_device_approved_time');
       alert("Administrators datorā noraidīja pieeju!");
       document.getElementById('pendingApprovalModal').classList.add('hidden');
       promptWorkerChange();
     }
 
-    // 3. Fona kļūdu bloķētājs & Baterijas vadība
+    // 3. Fona kļūdu bloķētājs
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'hidden') {
         await stopCameraSafely();
@@ -763,7 +779,7 @@
     // 5. IndexedDB
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v6', 1);
+        const req = indexedDB.open('EanScannerDB_v7', 1);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -1002,31 +1018,36 @@
       }
     }
 
-    // 7. Kameras lēcas vadība
+    // 7. Kameras lēcas vadība (Novērš melno ekrānu un nepareizo kameru)
     async function initCameraSystem() {
       if (!isDeviceApproved) return;
       try {
+        await stopCameraSafely();
         const devices = await Html5Qrcode.getCameras();
-        if (!devices || devices.length === 0) return;
-
-        availableCameras = devices;
-        let preferredIndex = -1;
-        for (let i = 0; i < devices.length; i++) {
-          const lbl = (devices[i].label || '').toLowerCase();
-          const isBack = lbl.includes('back') || lbl.includes('rear') || lbl.includes('aizmugur');
-          const isWide = lbl.includes('wide') || lbl.includes('ultra') || lbl.includes('0.5') || lbl.includes('macro');
-          if (isBack && !isWide) {
-            preferredIndex = i;
-            break;
+        if (devices && devices.length > 0) {
+          availableCameras = devices;
+          let preferredIndex = -1;
+          for (let i = 0; i < devices.length; i++) {
+            const lbl = (devices[i].label || '').toLowerCase();
+            const isBack = lbl.includes('back') || lbl.includes('rear') || lbl.includes('aizmugur') || lbl.includes('environment');
+            const isWide = lbl.includes('wide') || lbl.includes('ultra') || lbl.includes('0.5') || lbl.includes('macro');
+            if (isBack && !isWide) {
+              preferredIndex = i;
+              break;
+            }
           }
-        }
-        if (preferredIndex === -1) preferredIndex = 0;
 
-        currentCameraIndex = preferredIndex;
-        populateCameraDropdown();
+          if (preferredIndex !== -1) {
+            currentCameraIndex = preferredIndex;
+          } else {
+            // Ja nosaukumi vēl nav nolasīti no OS, ļausim pārlūkam izmantot native environment režīmu
+            currentCameraIndex = 0;
+          }
+          populateCameraDropdown();
+        }
         await startCameraWithSelectedLens();
       } catch (err) {
-        startCameraFallback();
+        await startCameraFallback();
       }
     }
 
@@ -1068,17 +1089,30 @@
         updateTorchUI(false);
       }
       if (html5QrScanner) {
-        try { await html5QrScanner.stop(); } catch (e) {}
+        try {
+          if (html5QrScanner.isScanning) {
+            await html5QrScanner.stop();
+          }
+        } catch (e) {}
       }
       cameraTrack = null;
     }
 
     async function startCameraWithSelectedLens() {
       if (isAnyModalOpen() || isCameraAsleep || !isDeviceApproved) return;
-      if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
+      await stopCameraSafely();
 
-      const cameraId = availableCameras[currentCameraIndex]?.id;
-      const cameraConfig = cameraId ? cameraId : { facingMode: "environment" };
+      if (!html5QrScanner) {
+        html5QrScanner = new Html5Qrcode("reader");
+      }
+
+      // Gudrā kameras izvēle: ja kamera ir skaidri atrasta, ņemam to, citādi native environment
+      let cameraConfig;
+      if (availableCameras.length > 0 && availableCameras[currentCameraIndex] && availableCameras[currentCameraIndex].label) {
+        cameraConfig = availableCameras[currentCameraIndex].id;
+      } else {
+        cameraConfig = { facingMode: "environment" };
+      }
 
       const scanConfig = {
         fps: 24,
@@ -1091,22 +1125,55 @@
         await html5QrScanner.start(cameraConfig, scanConfig, onBarcodeDetected, () => {});
         isCameraRunning = true;
         document.getElementById('cameraPausedOverlay').classList.add('hidden');
+        document.getElementById('cameraSleepOverlay').classList.add('hidden');
         document.getElementById('scanLaserLine').classList.remove('hidden');
 
-        setTimeout(() => {
+        // Pēc starta iegūstam kameras lēcu sarakstu ar atļautiem nosaukumiem
+        setTimeout(async () => {
           try {
             const video = document.querySelector('#reader video');
-            if (video && video.srcObject) cameraTrack = video.srcObject.getVideoTracks()[0];
+            if (video && video.srcObject) {
+              cameraTrack = video.srcObject.getVideoTracks()[0];
+            }
+            if (availableCameras.length === 0 || !availableCameras[0].label) {
+              const updatedDevices = await Html5Qrcode.getCameras();
+              if (updatedDevices && updatedDevices.length > 0) {
+                availableCameras = updatedDevices;
+                for (let i = 0; i < updatedDevices.length; i++) {
+                  const lbl = (updatedDevices[i].label || '').toLowerCase();
+                  if ((lbl.includes('back') || lbl.includes('rear') || lbl.includes('aizmugur')) && !lbl.includes('wide') && !lbl.includes('ultra')) {
+                    currentCameraIndex = i;
+                    break;
+                  }
+                }
+                populateCameraDropdown();
+              }
+            }
           } catch (e) {}
-        }, 600);
-      } catch (err) {}
+        }, 500);
+
+      } catch (err) {
+        console.warn("Kļūda palaižot kameru, tiek mēģināts fallback:", err);
+        await startCameraFallback();
+      }
     }
 
-    function startCameraFallback() {
-      if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
-      html5QrScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 260, height: 160 } }, onBarcodeDetected, () => {}).then(() => {
+    async function startCameraFallback() {
+      try {
+        await stopCameraSafely();
+        if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
+        await html5QrScanner.start(
+          { facingMode: "environment" },
+          { fps: 20, qrbox: { width: 260, height: 160 } },
+          onBarcodeDetected,
+          () => {}
+        );
         isCameraRunning = true;
-      }).catch(e => {});
+        document.getElementById('cameraPausedOverlay').classList.add('hidden');
+        document.getElementById('scanLaserLine').classList.remove('hidden');
+      } catch (e) {
+        console.error("Fallback kamera neizdevās:", e);
+      }
     }
 
     function pauseCamera() {
@@ -1385,7 +1452,7 @@
       onBarcodeDetected(code);
     }
 
-    // 11. Divsoļu ievade un STABILĀ FOTO APSTRĀDE
+    // 11. Divsoļu ievade un Stabilā Foto Apstrāde
     async function openQtyModalVariantsB(ean, name, price, isUnknown, initialStep = 'qty') {
       await stopCameraSafely();
 
@@ -1393,9 +1460,6 @@
       capturedPhotoBase64 = null;
       keypadQtyValue = appMode === 'labels' ? "1" : "1";
       keypadPriceValue = price;
-
-      // Saglabājam sesijā drošībai pret Android fona restartu
-      sessionStorage.setItem('ean_active_scan', JSON.stringify(activeScanData));
 
       document.getElementById('modalItemName').innerText = name;
       document.getElementById('modalItemEan').innerText = ean;
@@ -1513,7 +1577,6 @@
       document.getElementById('qtyModal').classList.add('hidden');
       activeScanData = null;
       capturedPhotoBase64 = null;
-      sessionStorage.removeItem('ean_active_scan');
       isScanCooldown = false;
       resetActivityTimer();
       if (!isCameraRunning) {
@@ -1523,7 +1586,7 @@
       }
     }
 
-    // PĀRBAUDĪTĀ FOTO IZSAUKŠANA (ATJAUNOTS FILEREADER RISINĀJUMS)
+    // PĀRBAUDĪTA FOTOKAMERAS IZSAUKŠANA UN SASPIEŠANA
     async function triggerNativeCameraPhoto() {
       await stopCameraSafely();
       const input = document.getElementById('nativeCameraInput');
@@ -1606,7 +1669,6 @@
       document.getElementById('qtyModal').classList.add('hidden');
       activeScanData = null;
       capturedPhotoBase64 = null;
-      sessionStorage.removeItem('ean_active_scan');
       isScanCooldown = false;
 
       updateSyncQueueBadge();
@@ -1884,7 +1946,6 @@
       setAppMode(appMode);
       await loadCatalogFromDb();
 
-      // Ielādējam pēdējās 20 pozīcijas RAM masīvā
       const allScans = await getAllScansFromDb();
       allScans.sort((a, b) => b.timestamp - a.timestamp);
       recentScansMemory = allScans.slice(0, 20);
@@ -1893,17 +1954,6 @@
 
       checkWorkerSessionOnStartup();
       resetActivityTimer();
-
-      // Atjaunojam atvērto kartīti, ja Android bija restartējis pārlūku kameras laikā
-      const savedActiveScan = sessionStorage.getItem('ean_active_scan');
-      if (savedActiveScan) {
-        try {
-          const parsed = JSON.parse(savedActiveScan);
-          if (parsed && parsed.ean) {
-            openQtyModalVariantsB(parsed.ean, parsed.name, parsed.price, parsed.isUnknown, 'qty');
-          }
-        } catch (e) {}
-      }
 
       setInterval(() => { syncOfflineQueue(); }, 4000);
     });
