@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris</title>
+  <title>EAN Skeneris Pro</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -80,7 +80,6 @@
       </button>
     </div>
 
-    <!-- Rīki -->
     <div class="flex items-center gap-2">
       <div id="syncBadge" class="hidden px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold">
         <span id="unsyncedCount">0</span>⏳
@@ -100,7 +99,7 @@
     </div>
   </header>
 
-  <!-- 2. Režīmu Slēdzis -->
+  <!-- 2. Režīmi -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 border border-white/10 rounded-2xl">
       <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 text-xs sm:text-sm font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
@@ -301,7 +300,7 @@
     </div>
   </div>
 
-  <!-- 9. MODĀLIS: Preces kartīte un stabils foto -->
+  <!-- 9. MODĀLIS: Preces kartīte un VAIRĀKU BILŽU (MULTI-PHOTO) UZŅEMŠANA -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       
@@ -313,20 +312,23 @@
         <p id="modalItemEan" class="text-xs font-mono text-slate-400 tracking-wider">0000000000000</p>
       </div>
 
-      <!-- Nezināmas preces foto (Stabilais FileReader risinājums) -->
-      <div id="unknownItemBlock" class="hidden space-y-2 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
-        <p class="text-xs font-bold text-amber-400 flex items-center gap-1">
-          <span>⚠️</span> <span>Prece nav atlikumu bāzē!</span>
-        </p>
-        <div class="flex items-center gap-2">
-          <button type="button" onclick="triggerNativeCameraPhoto()" class="flex-1 py-2.5 px-3 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition">
-            <span>📷</span>
-            <span id="photoBtnLabel">Nofotografēt preci / cenu</span>
-          </button>
-          <div id="photoThumbnail" class="hidden w-10 h-10 rounded-xl border border-amber-400/50 overflow-hidden shrink-0">
-            <img id="photoPreviewImg" class="w-full h-full object-cover" src="" alt="preview">
-          </div>
+      <!-- Vairāku bilžu uzņemšanas bloks (1280px asa kvalitāte) -->
+      <div id="unknownItemBlock" class="hidden space-y-2.5 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-bold text-amber-400 flex items-center gap-1">
+            <span>⚠️</span> <span>Prece nav atlikumu bāzē!</span>
+          </p>
+          <span id="photosCounterBadge" class="text-[10px] font-mono font-bold text-amber-300">0 bildes</span>
         </div>
+
+        <!-- Bilžu sīktēlu galerija ar dzēšanas pogām -->
+        <div id="modalPhotoThumbnailsContainer" class="hidden flex items-center gap-2 overflow-x-auto pb-1"></div>
+
+        <button type="button" onclick="triggerNativeCameraPhoto()" class="w-full py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition shadow-2xs">
+          <span>📷</span>
+          <span id="photoBtnLabel">Nofotografēt preci / cenu</span>
+        </button>
+
         <input type="file" id="nativeCameraInput" accept="image/*" capture="environment" class="hidden" onchange="onNativePhotoCaptured(event)">
       </div>
 
@@ -494,22 +496,23 @@
     let localCatalog = new Map();
     let activeScanData = null;
     let currentEditScanId = null;
-    let capturedPhotoBase64 = null;
     let isCameraRunning = false;
     let wakeLock = null;
 
-    // Autorizācijas stāvoklis
+    // Vairāku bilžu masīvs
+    let currentScanPhotos = [];
+
+    // Autorizācija
     let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
     let authRetryInterval = null;
 
-    // Baterijas taupīšanas dīkstāves taimeris (60s)
+    // Baterijas taupīšana (60s)
     let idleTimer = null;
     let isCameraAsleep = false;
     const IDLE_TIMEOUT_MS = 60000;
 
-    // RAM masīvs: 20 pozīcijas bez lagiem
+    // RAM masīvs: 20 pozīcijas
     let recentScansMemory = [];
-
     let isScanCooldown = false;
     let lastScannedCode = '';
     let lastScannedTime = 0;
@@ -564,14 +567,13 @@
       renderRecentScans();
     }
 
-    // 2. Darbinieka pārbaude un 24h atmiņa (Novērš vaicājumu pie katras atvēršanas)
+    // 2. Darbinieka pārbaude (24h atmiņa)
     function checkWorkerSessionOnStartup() {
       const isSessionActive = sessionStorage.getItem('ean_worker_session_active');
       const savedName = localStorage.getItem('ean_device_id') || '';
       const lastApprovedTime = parseInt(localStorage.getItem('ean_device_approved_time') || '0');
       const isStillApproved24h = (Date.now() - lastApprovedTime) < (24 * 60 * 60 * 1000);
 
-      // Ja administrators 24h laikā jau bija apstiprinājis šo darbinieku, uzreiz palaižam kameru
       if (savedName && isStillApproved24h) {
         sessionStorage.setItem('ean_worker_session_active', 'true');
         sessionStorage.setItem('ean_device_approved', 'true');
@@ -579,9 +581,7 @@
 
         updateDeviceHeaderUI();
         initMqtt();
-        setTimeout(() => {
-          initCameraSystem();
-        }, 200);
+        setTimeout(() => { initCameraSystem(); }, 200);
         return;
       }
 
@@ -628,7 +628,7 @@
       resetActivityTimer();
     }
 
-    // Autorizācijas slūžas
+    // Autorizācija
     function requestAuthorizationFromAdmin() {
       if (isDeviceApproved) {
         document.getElementById('pendingApprovalModal').classList.add('hidden');
@@ -683,7 +683,6 @@
       playAudioTone('success');
       triggerHaptic('short');
 
-      // Aizture DOM nomierināšanai, lai kamera nekad nepaliktu melna
       setTimeout(() => {
         if (!isCameraRunning) initCameraSystem();
       }, 200);
@@ -741,7 +740,6 @@
       });
     }
 
-    // 4. Audio & Vibrācija
     function playAudioTone(type = 'success') {
       if (!isSoundEnabled) return;
       try {
@@ -776,10 +774,10 @@
       else if (type === 'warning') navigator.vibrate([70, 50, 70]);
     }
 
-    // 5. IndexedDB
+    // 4. IndexedDB
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v7', 1);
+        const req = indexedDB.open('EanScannerDB_v9', 1);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -924,7 +922,9 @@
       }
     }
 
-    // 6. MQTT Tīkls
+    // 5. MQTT Tīkls (Ar secīgu sūtīšanu, lai brokeris nenomestu paketes)
+    let isSyncingQueue = false;
+
     function initMqtt() {
       const roomId = getRoomId();
       const deviceId = getDeviceId();
@@ -974,6 +974,7 @@
             playAudioTone('success');
           }
 
+          // Datora apstiprinājums (Nodzēš Pending statusu!)
           if (topic.includes(`/ack/${deviceId}`) && payload.scanId) {
             await markScanSyncedInDb(payload.scanId);
             const memItem = recentScansMemory.find(x => x.id === payload.scanId);
@@ -989,16 +990,23 @@
     }
 
     async function syncOfflineQueue() {
+      if (isSyncingQueue) return;
       const all = await getAllScansFromDb();
       const unsynced = all.filter(x => !x.synced && x.mode !== 'pricecheck');
       updateSyncQueueBadge(unsynced.length);
 
       if (unsynced.length === 0 || !mqttClient || !mqttClient.connected) return;
 
+      isSyncingQueue = true;
       const roomId = getRoomId();
+
+      // Sūtam pa vienam ar 150ms pauzi, lai novērstu brokera bufera pārpildi
       for (const item of unsynced) {
+        if (!mqttClient.connected) break;
         mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(item));
+        await new Promise(r => setTimeout(r, 150));
       }
+      isSyncingQueue = false;
     }
 
     async function updateSyncQueueBadge(count = null) {
@@ -1018,7 +1026,7 @@
       }
     }
 
-    // 7. Kameras lēcas vadība (Novērš melno ekrānu un nepareizo kameru)
+    // 6. Kameras vadība
     async function initCameraSystem() {
       if (!isDeviceApproved) return;
       try {
@@ -1036,13 +1044,7 @@
               break;
             }
           }
-
-          if (preferredIndex !== -1) {
-            currentCameraIndex = preferredIndex;
-          } else {
-            // Ja nosaukumi vēl nav nolasīti no OS, ļausim pārlūkam izmantot native environment režīmu
-            currentCameraIndex = 0;
-          }
+          currentCameraIndex = preferredIndex !== -1 ? preferredIndex : 0;
           populateCameraDropdown();
         }
         await startCameraWithSelectedLens();
@@ -1102,13 +1104,10 @@
       if (isAnyModalOpen() || isCameraAsleep || !isDeviceApproved) return;
       await stopCameraSafely();
 
-      if (!html5QrScanner) {
-        html5QrScanner = new Html5Qrcode("reader");
-      }
+      if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
 
-      // Gudrā kameras izvēle: ja kamera ir skaidri atrasta, ņemam to, citādi native environment
       let cameraConfig;
-      if (availableCameras.length > 0 && availableCameras[currentCameraIndex] && availableCameras[currentCameraIndex].label) {
+      if (availableCameras.length > 0 && availableCameras[currentCameraIndex]?.label) {
         cameraConfig = availableCameras[currentCameraIndex].id;
       } else {
         cameraConfig = { facingMode: "environment" };
@@ -1128,32 +1127,13 @@
         document.getElementById('cameraSleepOverlay').classList.add('hidden');
         document.getElementById('scanLaserLine').classList.remove('hidden');
 
-        // Pēc starta iegūstam kameras lēcu sarakstu ar atļautiem nosaukumiem
         setTimeout(async () => {
           try {
             const video = document.querySelector('#reader video');
-            if (video && video.srcObject) {
-              cameraTrack = video.srcObject.getVideoTracks()[0];
-            }
-            if (availableCameras.length === 0 || !availableCameras[0].label) {
-              const updatedDevices = await Html5Qrcode.getCameras();
-              if (updatedDevices && updatedDevices.length > 0) {
-                availableCameras = updatedDevices;
-                for (let i = 0; i < updatedDevices.length; i++) {
-                  const lbl = (updatedDevices[i].label || '').toLowerCase();
-                  if ((lbl.includes('back') || lbl.includes('rear') || lbl.includes('aizmugur')) && !lbl.includes('wide') && !lbl.includes('ultra')) {
-                    currentCameraIndex = i;
-                    break;
-                  }
-                }
-                populateCameraDropdown();
-              }
-            }
+            if (video && video.srcObject) cameraTrack = video.srcObject.getVideoTracks()[0];
           } catch (e) {}
         }, 500);
-
       } catch (err) {
-        console.warn("Kļūda palaižot kameru, tiek mēģināts fallback:", err);
         await startCameraFallback();
       }
     }
@@ -1162,18 +1142,11 @@
       try {
         await stopCameraSafely();
         if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
-        await html5QrScanner.start(
-          { facingMode: "environment" },
-          { fps: 20, qrbox: { width: 260, height: 160 } },
-          onBarcodeDetected,
-          () => {}
-        );
+        await html5QrScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 260, height: 160 } }, onBarcodeDetected, () => {});
         isCameraRunning = true;
         document.getElementById('cameraPausedOverlay').classList.add('hidden');
         document.getElementById('scanLaserLine').classList.remove('hidden');
-      } catch (e) {
-        console.error("Fallback kamera neizdevās:", e);
-      }
+      } catch (e) {}
     }
 
     function pauseCamera() {
@@ -1208,11 +1181,9 @@
             const v = document.querySelector('#reader video');
             if (v && v.srcObject) cameraTrack = v.srcObject.getVideoTracks()[0];
           }
-          if (cameraTrack && cameraTrack.applyConstraints) {
+          if (cameraTrack?.applyConstraints) {
             await cameraTrack.applyConstraints({ advanced: [{ torch: isTorchOn }] });
             updateTorchUI(isTorchOn);
-          } else {
-            throw new Error();
           }
         } catch (e2) {
           isTorchOn = !isTorchOn;
@@ -1229,7 +1200,7 @@
         : "w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
-    // 8. Skenēšanas apstrāde
+    // 7. Skenēšanas apstrāde
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
@@ -1243,7 +1214,6 @@
       const name = item ? item.nosaukums : 'Nezināma prece';
       const priceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
-      // REŽĪMS: CENU ZĪMES
       if (appMode === 'labels') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1282,7 +1252,6 @@
         return;
       }
 
-      // REŽĪMS: PĀRBAUDE
       if (appMode === 'pricecheck') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1296,7 +1265,6 @@
         return;
       }
 
-      // REŽĪMS: INVENTŪRA
       isScanCooldown = true;
       if (item) {
         playAudioTone('success');
@@ -1329,7 +1297,7 @@
       window._toastTimeout = setTimeout(() => { overlay.classList.add('hidden'); }, 1400);
     }
 
-    // 9. Preču meklēšana bāzē
+    // 8. Meklēšana bāzē
     async function openCatalogSearchModal() {
       await stopCameraSafely();
       document.getElementById('catalogSearchModal').classList.remove('hidden');
@@ -1381,7 +1349,6 @@
         const priceEur = it.cena ? parseFloat(it.cena).toFixed(2) : '0.00';
         const div = document.createElement('div');
         div.className = "p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/15 flex items-center justify-between gap-3 cursor-pointer transition";
-        
         div.onclick = () => {
           document.getElementById('catalogSearchModal').classList.add('hidden');
 
@@ -1410,7 +1377,7 @@
       });
     }
 
-    // 10. Koda ievade ar roku
+    // 9. Koda ievade ar roku
     async function openManualEanModal() {
       await stopCameraSafely();
       manualEanValue = "";
@@ -1452,12 +1419,12 @@
       onBarcodeDetected(code);
     }
 
-    // 11. Divsoļu ievade un Stabilā Foto Apstrāde
+    // 10. Divsoļu ievade un Vairāku bilžu uzņemšana (Multi-photo)
     async function openQtyModalVariantsB(ean, name, price, isUnknown, initialStep = 'qty') {
       await stopCameraSafely();
 
       activeScanData = { ean, name, price, isUnknown };
-      capturedPhotoBase64 = null;
+      currentScanPhotos = []; // Notīrām iepriekšējās bildes
       keypadQtyValue = appMode === 'labels' ? "1" : "1";
       keypadPriceValue = price;
 
@@ -1466,19 +1433,48 @@
       document.getElementById('modalItemPrice').innerText = `${price} €`;
 
       const unknownBlock = document.getElementById('unknownItemBlock');
-      const photoThumb = document.getElementById('photoThumbnail');
-      const photoLabel = document.getElementById('photoBtnLabel');
-
       if (isUnknown) {
         unknownBlock.classList.remove('hidden');
-        photoThumb.classList.add('hidden');
-        photoLabel.innerText = "Nofotografēt preci / cenu";
+        renderModalPhotosGallery();
       } else {
         unknownBlock.classList.add('hidden');
       }
 
       goToStep(initialStep);
       document.getElementById('qtyModal').classList.remove('hidden');
+    }
+
+    function renderModalPhotosGallery() {
+      const container = document.getElementById('modalPhotoThumbnailsContainer');
+      const counter = document.getElementById('photosCounterBadge');
+      const btnLabel = document.getElementById('photoBtnLabel');
+
+      counter.innerText = `${currentScanPhotos.length} ${currentScanPhotos.length === 1 ? 'bilde' : 'bildes'}`;
+
+      if (currentScanPhotos.length === 0) {
+        container.classList.add('hidden');
+        btnLabel.innerText = "Nofotografēt preci / cenu";
+        return;
+      }
+
+      container.classList.remove('hidden');
+      btnLabel.innerText = "+ Pievienot vēl vienu bildi";
+      container.innerHTML = '';
+
+      currentScanPhotos.forEach((base64, idx) => {
+        const thumbWrapper = document.createElement('div');
+        thumbWrapper.className = "relative w-14 h-14 rounded-xl border border-amber-400/50 overflow-hidden shrink-0";
+        thumbWrapper.innerHTML = `
+          <img src="data:image/jpeg;base64,${base64}" class="w-full h-full object-cover">
+          <button type="button" onclick="removePhotoFromCurrentScan(${idx})" class="absolute top-0 right-0 w-4.5 h-4.5 bg-red-600 text-white font-bold text-[10px] flex items-center justify-center rounded-bl-lg">✕</button>
+        `;
+        container.appendChild(thumbWrapper);
+      });
+    }
+
+    function removePhotoFromCurrentScan(index) {
+      currentScanPhotos.splice(index, 1);
+      renderModalPhotosGallery();
     }
 
     function goToStep(step) {
@@ -1576,7 +1572,7 @@
     async function cancelScan() {
       document.getElementById('qtyModal').classList.add('hidden');
       activeScanData = null;
-      capturedPhotoBase64 = null;
+      currentScanPhotos = [];
       isScanCooldown = false;
       resetActivityTimer();
       if (!isCameraRunning) {
@@ -1586,7 +1582,7 @@
       }
     }
 
-    // PĀRBAUDĪTA FOTOKAMERAS IZSAUKŠANA UN SASPIEŠANA
+    // FOTOKAMERAS IZSAUKŠANA UN 1280PX ASA KOMPRESIJA (BEZ OOM AVĀRIJĀM)
     async function triggerNativeCameraPhoto() {
       await stopCameraSafely();
       const input = document.getElementById('nativeCameraInput');
@@ -1602,7 +1598,8 @@
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          const maxDim = 1000;
+          // Augsta asuma mērogojums uz 1280px (sīks teksts un EAN ir lieliski salasāms)
+          const maxDim = 1280;
           let w = img.width;
           let h = img.height;
 
@@ -1620,14 +1617,16 @@
           canvas.width = w;
           canvas.height = h;
           const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, w, h);
 
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          capturedPhotoBase64 = compressedDataUrl.split(',')[1];
+          // Saspiežam uz ~100KB JPEG (ideāli piemērots MQTT tīklam)
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.80);
+          const base64Data = compressedDataUrl.split(',')[1];
 
-          document.getElementById('photoPreviewImg').src = compressedDataUrl;
-          document.getElementById('photoThumbnail').classList.remove('hidden');
-          document.getElementById('photoBtnLabel').innerText = "Mainīt foto";
+          currentScanPhotos.push(base64Data);
+          renderModalPhotosGallery();
           triggerHaptic('short');
         };
         img.src = e.target.result;
@@ -1653,7 +1652,8 @@
         price: price.toFixed(2),
         qty: qty,
         isUnknown: activeScanData.isUnknown,
-        photoBase64: capturedPhotoBase64 || null,
+        photos: currentScanPhotos, // Vairāku bilžu masīvs
+        photoBase64: currentScanPhotos[0] || null, // Savietojamībai ar vecākām versijām
         mode: appMode,
         timestamp: Date.now(),
         synced: false
@@ -1668,7 +1668,7 @@
 
       document.getElementById('qtyModal').classList.add('hidden');
       activeScanData = null;
-      capturedPhotoBase64 = null;
+      currentScanPhotos = [];
       isScanCooldown = false;
 
       updateSyncQueueBadge();
@@ -1688,7 +1688,7 @@
       }
     }
 
-    // 12. RAM Saraksta Renderēšana (20 pozīcijas)
+    // 11. RAM Saraksta Renderēšana (20 pozīcijas)
     function renderRecentScans() {
       const list = document.getElementById('recentScansList');
       const filtered = recentScansMemory.filter(x => x.mode === appMode);
@@ -1725,7 +1725,7 @@
       });
     }
 
-    // 13. Labošana no saraksta
+    // 12. Labošana no saraksta
     async function openEditModal(scanId) {
       await stopCameraSafely();
       const all = await getAllScansFromDb();
@@ -1955,7 +1955,7 @@
       checkWorkerSessionOnStartup();
       resetActivityTimer();
 
-      setInterval(() => { syncOfflineQueue(); }, 4000);
+      setInterval(() => { syncOfflineQueue(); }, 3500);
     });
   </script>
 </body>
