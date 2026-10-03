@@ -99,7 +99,7 @@
     </div>
   </header>
 
-  <!-- 2. Režīmi -->
+  <!-- 2. Režīmi: 4 režīmi (Inventūra, Cenu zīmes, Pārcenošana, Pārbaude) -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div class="grid grid-cols-4 gap-1 p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
       <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
@@ -117,7 +117,7 @@
     </div>
   </div>
 
-  <!-- 3. Kameras Zona -->
+  <!-- 3. Kameras Bloks -->
   <main class="flex-1 flex flex-col px-3 py-1 gap-2 overflow-hidden relative">
     <div class="relative w-full aspect-[4/3] max-h-[27vh] bg-black rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex items-center justify-center">
       <div id="reader" class="w-full h-full"></div>
@@ -160,10 +160,10 @@
       </div>
     </div>
 
-    <!-- Galvenās pogas -->
+    <!-- Pamatpogas -->
     <div class="grid grid-cols-2 gap-2 w-full">
       <button type="button" onclick="openManualEanModal()" class="py-3 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg border border-emerald-400/30 flex items-center justify-center gap-2 transition">
-        <span class="text-base sm:text-lg">⌨️️</span>
+        <span class="text-base sm:text-lg">⌨</span>
         <span class="uppercase font-mono tracking-tight">Kods ar roku</span>
       </button>
 
@@ -301,11 +301,10 @@
     </div>
   </div>
 
-  <!-- 9. MODĀLIS: Preces kartīte ar drošības brīdinājumu par jau mainītu cenu -->
+  <!-- 9. MODĀLIS: Preces kartīte -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       
-      <!-- Preces info -->
       <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
         <div class="flex items-start justify-between gap-2">
           <h2 id="modalItemName" class="text-sm sm:text-base font-bold text-white leading-tight line-clamp-2">Prece...</h2>
@@ -314,15 +313,15 @@
         <p id="modalItemEan" class="text-xs font-mono text-slate-400 tracking-wider">0000000000000</p>
       </div>
 
-      <!-- DROŠĪBAS BRĪDINĀJUMS: Ja cena jau tikko tika mainīta -->
+      <!-- Brīdinājums, ja cena jau bija mainīta -->
       <div id="priceAlreadyChangedAlert" class="hidden p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs space-y-0.5">
         <p class="font-bold flex items-center gap-1">
           <span>⚠️</span> <span>Cena šajā sesijā jau ir mainīta!</span>
         </p>
-        <p class="text-[11px] text-slate-300" id="priceAlreadyChangedDetails">Iepriekš iestatītā cena: 0.00 € (Bāzē: 0.00 €)</p>
+        <p class="text-[11px] text-slate-300" id="priceAlreadyChangedDetails">Nesen mainītā cena: 0.00 €</p>
       </div>
 
-      <!-- Nezināmas preces foto (Vairāku bilžu uzņemšana) -->
+      <!-- Nezināmas preces foto -->
       <div id="unknownItemBlock" class="hidden space-y-2.5 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
         <div class="flex items-center justify-between">
           <p class="text-xs font-bold text-amber-400 flex items-center gap-1">
@@ -389,11 +388,11 @@
     </div>
   </div>
 
-  <!-- 10. MODĀLIS: Labot ierakstu no vēstures -->
+  <!-- 10. MODĀLIS: Labot ierakstu (PĀRCENOŠANĀ TIKAI CENA!) -->
   <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
-        <h3 class="text-xs font-bold text-white uppercase font-mono">Labot ierakstu</h3>
+        <h3 id="editModalTitle" class="text-xs font-bold text-white uppercase font-mono">Labot cenu (€)</h3>
         <button type="button" onclick="closeEditModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
       </div>
 
@@ -402,6 +401,7 @@
         <p id="editItemEan" class="text-xs font-mono text-slate-400">0000000000000</p>
       </div>
 
+      <!-- Slēdzis starp daudzumu un cenu (parādās tikai inventūrā) -->
       <div id="editTargetSwitcher" class="hidden grid grid-cols-2 gap-1.5 p-1 bg-black/60 rounded-2xl border border-white/10">
         <button type="button" id="editTargetBtn_qty" onclick="switchEditTarget('qty')" class="py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white">
           Daudzums
@@ -411,8 +411,13 @@
         </button>
       </div>
 
-      <div class="px-4 py-2 bg-black/70 rounded-2xl border border-white/15 text-center">
-        <input type="text" id="editKeypadDisplay" readonly inputmode="none" value="1" class="text-3xl font-bold font-mono text-emerald-400 bg-transparent text-center w-full focus:outline-none">
+      <!-- Displejs ar skaidru valūtas zīmi -->
+      <div class="flex items-center justify-between px-4 py-2 bg-black/70 rounded-2xl border border-white/15">
+        <span id="editInputLabel" class="text-xs font-mono uppercase font-bold text-slate-400">Cena:</span>
+        <div class="flex items-baseline gap-1">
+          <input type="text" id="editKeypadDisplay" readonly inputmode="none" value="0.00" class="text-3xl font-bold font-mono text-emerald-400 bg-transparent text-right w-36 focus:outline-none">
+          <span id="editInputUnit" class="text-xs text-slate-400 font-mono">€</span>
+        </div>
       </div>
 
       <div class="grid grid-cols-3 gap-1.5">
@@ -435,7 +440,7 @@
           Dzēst
         </button>
         <button type="button" onclick="saveCurrentEditScan()" class="flex-1 py-2.5 rounded-2xl bg-indigo-600 text-white text-xs sm:text-sm font-bold active:scale-95">
-          Atjaunot ✓
+          Atjaunot cenu ✓
         </button>
       </div>
     </div>
@@ -509,8 +514,6 @@
     let wakeLock = null;
 
     let currentScanPhotos = [];
-
-    // Drošības stāvoklis: vai precei jau bija fiksēta mainīta cena
     let activeItemPreExistingPrice = null;
     let activeItemWasModifiedBefore = false;
 
@@ -535,7 +538,7 @@
     let isKeypadResetOnNextDigit = true;
     let manualEanValue = "";
 
-    let activeEditTarget = 'qty';
+    let activeEditTarget = 'price';
     let editQtyValue = "1";
     let editPriceValue = "0.00";
     let isEditKeypadReset = true;
@@ -544,7 +547,7 @@
     let isSoundEnabled = localStorage.getItem('ean_sound_enabled') !== 'false';
     let isPricePromptEnabled = localStorage.getItem('ean_price_prompt') === 'true';
 
-    // 1. Režīmi
+    // 1. Režīmi: 4 režīmi (Inventūra, Cenu zīmes, Pārcenošana, Pārbaude)
     function setAppMode(mode) {
       appMode = mode;
       localStorage.setItem('ean_app_mode', mode);
@@ -830,6 +833,7 @@
           if (getReq.result) {
             const data = getReq.result;
             data.synced = true;
+            delete data.pendingUpdate;
             store.put(data);
           }
           resolve();
@@ -927,7 +931,7 @@
       }
     }
 
-    // 5. MQTT Tīkls (Ar cenu sinhronizāciju no Admin paneļa!)
+    // 5. MQTT Tīkls
     let isSyncingQueue = false;
 
     function initMqtt() {
@@ -955,7 +959,7 @@
           `ean2026/${roomId}/catalog`,
           `ean2026/${roomId}/ack/${deviceId}`,
           `ean2026/${roomId}/auth/${deviceId}`,
-          `ean2026/${roomId}/price_update` // Klausāmies datora veiktās cenu maiņas!
+          `ean2026/${roomId}/price_update`
         ]);
 
         mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, time: Date.now() }));
@@ -967,14 +971,13 @@
         try {
           const payload = JSON.parse(msg.toString());
 
-          // 1. Dators nomainījis cenu precei -> atjaunojam vietējo bāzi tālrunī!
+          // Cenu atjauninājums no datora
           if (topic.endsWith('/price_update') && payload.ean && payload.price) {
             const catItem = localCatalog.get(payload.ean);
             if (catItem) {
               catItem.cena = payload.price;
               catItem.isPriceModified = true;
             }
-            // Atjauninām arī vietējā skenējumu atmiņā
             recentScansMemory.forEach(s => {
               if (s.ean === payload.ean) s.price = payload.price;
             });
@@ -991,6 +994,7 @@
             playAudioTone('success');
           }
 
+          // Dators apstiprinājis saņemšanu (Nodzēš pending statusu)
           if (topic.includes(`/ack/${deviceId}`) && payload.scanId) {
             await markScanSyncedInDb(payload.scanId);
             const memItem = recentScansMemory.find(x => x.id === payload.scanId);
@@ -1018,10 +1022,24 @@
 
       for (const item of unsynced) {
         if (!mqttClient.connected) break;
-        mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(item));
+        if (item.pendingUpdate) {
+          mqttClient.publish(`ean2026/${roomId}/scan_update`, JSON.stringify({
+            id: item.id,
+            ean: item.ean,
+            qty: item.qty,
+            price: item.price,
+            mode: item.mode,
+            deviceId: getDeviceId()
+          }));
+          await markScanSyncedInDb(item.id);
+          item.synced = true;
+        } else {
+          mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(item));
+        }
         await new Promise(r => setTimeout(r, 150));
       }
       isSyncingQueue = false;
+      updateSyncQueueBadge();
     }
 
     async function updateSyncQueueBadge(count = null) {
@@ -1257,7 +1275,7 @@
           price: basePriceEur,
           qty: 1,
           mode: 'labels',
-          timestamp: Date.now,
+          timestamp: Date.now(),
           synced: false
         };
 
@@ -1442,16 +1460,14 @@
       onBarcodeDetected(code);
     }
 
-    // 10. Divsoļu ievade ar DROŠĪBAS PĀRBAUDI par jau mainītu cenu
+    // 10. Divsoļu ievade un Vairāku bilžu uzņemšana
     async function openQtyModalVariantsB(ean, name, basePrice, isUnknown, initialStep = 'qty') {
       await stopCameraSafely();
 
-      // Pārbaudām, vai šai precei jau ir fiksēta cita cena šajā sesijā
       let startingPrice = basePrice;
       activeItemWasModifiedBefore = false;
       activeItemPreExistingPrice = null;
 
-      // Pārbaudām nesenos skenējumus
       const existingScan = recentScansMemory.find(s => s.ean === ean);
       if (existingScan && existingScan.price && existingScan.price !== '0.00' && existingScan.price !== basePrice) {
         startingPrice = existingScan.price;
@@ -1475,7 +1491,6 @@
       document.getElementById('modalItemEan').innerText = ean;
       document.getElementById('modalItemPrice').innerText = `${startingPrice} €`;
 
-      // Drošības brīdinājuma baneris
       const alertBox = document.getElementById('priceAlreadyChangedAlert');
       const alertDetails = document.getElementById('priceAlreadyChangedDetails');
       if (activeItemWasModifiedBefore) {
@@ -1686,7 +1701,7 @@
 
     async function confirmScan() {
       if (!activeScanData) return;
-      const qty = parseFloat(keypadQtyValue);
+      const qty = (appMode === 'repricing') ? 1 : parseFloat(keypadQtyValue);
       const priceVal = parseFloat(keypadPriceValue) || 0.00;
       const formattedPrice = priceVal.toFixed(2);
 
@@ -1695,7 +1710,6 @@
         return;
       }
 
-      // DROŠĪBAS PĀRBAUDE: Ja cena jau bija mainīta un darbinieks mēģina uzlikt citu cenu
       if (activeItemWasModifiedBefore && activeItemPreExistingPrice !== formattedPrice) {
         const proceed = confirm(
           `UZMANĪBU!\n\nŠai precei cena jau tika mainīta uz ${activeItemPreExistingPrice} €.\n\nVai tiešām vēlaties to pārrakstīt uz ${formattedPrice} €?`
@@ -1747,7 +1761,7 @@
       }
     }
 
-    // 11. RAM Saraksta Renderēšana (20 pozīcijas)
+    // 11. RAM Saraksta Renderēšana (Pārcenošanā rāda cenu!)
     function renderRecentScans() {
       const list = document.getElementById('recentScansList');
       const filtered = recentScansMemory.filter(x => x.mode === appMode);
@@ -1768,6 +1782,14 @@
           ? `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>` 
           : `<span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>`;
 
+        // Pārcenošanā rāda cenu, pārējos daudzumu
+        let badgeHtml = '';
+        if (it.mode === 'repricing') {
+          badgeHtml = `<span class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs sm:text-sm">${it.price || '0.00'} €</span>`;
+        } else {
+          badgeHtml = `<span class="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-mono font-bold text-xs sm:text-sm">${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}</span>`;
+        }
+
         row.innerHTML = `
           <div class="truncate flex-1">
             <div class="flex items-center gap-1.5">
@@ -1777,14 +1799,14 @@
             <p class="text-xs font-mono text-slate-400 mt-0.5">${it.ean} • ${it.price || '0.00'} € • ${timeStr}</p>
           </div>
           <div class="text-right shrink-0">
-            <span class="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-mono font-bold text-xs sm:text-sm">${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}</span>
+            ${badgeHtml}
           </div>
         `;
         list.appendChild(row);
       });
     }
 
-    // 12. Labošana no saraksta
+    // 12. Labošana no saraksta (PĀRCENOŠANĀ TIKAI CENA UN NAV PENDING IEĶERŠANĀS)
     async function openEditModal(scanId) {
       await stopCameraSafely();
       const all = await getAllScansFromDb();
@@ -1792,21 +1814,32 @@
       if (!item) return;
 
       currentEditScanId = scanId;
-      editQtyValue = String(item.qty);
+      editQtyValue = String(item.qty || 1);
       editPriceValue = String(item.price || "0.00");
       isEditKeypadReset = true;
 
       document.getElementById('editItemName').innerText = item.name;
       document.getElementById('editItemEan').innerText = `EAN: ${item.ean}`;
 
+      const isRepriceMode = (item.mode === 'repricing' || appMode === 'repricing');
       const switcher = document.getElementById('editTargetSwitcher');
-      if (isPricePromptEnabled || appMode === 'labels' || appMode === 'repricing') {
+      const modalTitle = document.getElementById('editModalTitle');
+
+      if (isRepriceMode) {
+        // Pārcenošanā daudzums vispār neparādās!
+        switcher.classList.add('hidden');
+        if (modalTitle) modalTitle.innerText = "Labot cenu (€)";
+        switchEditTarget('price');
+      } else if (isPricePromptEnabled || appMode === 'labels') {
         switcher.classList.remove('hidden');
+        if (modalTitle) modalTitle.innerText = "Labot ierakstu";
+        switchEditTarget('qty');
       } else {
         switcher.classList.add('hidden');
+        if (modalTitle) modalTitle.innerText = "Labot daudzumu";
+        switchEditTarget('qty');
       }
 
-      switchEditTarget('qty');
       document.getElementById('editModal').classList.remove('hidden');
     }
 
@@ -1817,14 +1850,20 @@
       const qtyBtn = document.getElementById('editTargetBtn_qty');
       const priceBtn = document.getElementById('editTargetBtn_price');
       const display = document.getElementById('editKeypadDisplay');
+      const unitLabel = document.getElementById('editInputUnit');
+      const inputLabel = document.getElementById('editInputLabel');
 
       if (target === 'qty') {
-        qtyBtn.className = "py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white";
-        priceBtn.className = "py-1 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white";
+        if (qtyBtn) qtyBtn.className = "py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white";
+        if (priceBtn) priceBtn.className = "py-1 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white";
+        if (inputLabel) inputLabel.innerText = "Daudzums:";
+        if (unitLabel) unitLabel.innerText = "gab / kg";
         display.value = editQtyValue;
       } else {
-        priceBtn.className = "py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white";
-        qtyBtn.className = "py-1 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white";
+        if (priceBtn) priceBtn.className = "py-1 text-xs font-bold rounded-xl transition bg-emerald-600 text-white";
+        if (qtyBtn) qtyBtn.className = "py-1 text-xs font-semibold rounded-xl transition text-slate-400 hover:text-white";
+        if (inputLabel) inputLabel.innerText = "Cena:";
+        if (unitLabel) unitLabel.innerText = "€";
         display.value = editPriceValue;
       }
     }
@@ -1872,42 +1911,86 @@
       startCameraWithSelectedLens();
     }
 
+    // Droša saglabāšana bez "1⏳" ieķeršanās
     async function saveCurrentEditScan() {
       if (!currentEditScanId) return;
-      const newQty = parseFloat(editQtyValue);
-      const newPrice = parseFloat(editPriceValue) || 0.00;
+      const all = await getAllScansFromDb();
+      const item = all.find(x => x.id === currentEditScanId);
+      if (!item) return;
 
-      if (isNaN(newQty) || newQty <= 0) return;
+      const isRepriceMode = (item.mode === 'repricing' || appMode === 'repricing');
+
+      let newQty = parseFloat(editQtyValue);
+      let newPrice = parseFloat(editPriceValue);
+
+      if (isRepriceMode) {
+        newQty = 1; // Pārcenošanā daudzums VIENMĒR ir 1
+        if (isNaN(newPrice) || newPrice < 0) {
+          alert("Lūdzu, ievadiet derīgu cenu!");
+          return;
+        }
+      } else {
+        if (isNaN(newQty) || newQty <= 0) {
+          alert("Lūdzu, ievadiet derīgu daudzumu!");
+          return;
+        }
+        if (isNaN(newPrice) || newPrice < 0) {
+          newPrice = parseFloat(item.price) || 0.00;
+        }
+      }
+
+      const formattedPrice = newPrice.toFixed(2);
+      const isOnline = mqttClient && mqttClient.connected;
 
       const db = await openDb();
       const tx = db.transaction('scans', 'readwrite');
       const store = tx.objectStore('scans');
       const req = store.get(currentEditScanId);
+
       req.onsuccess = () => {
         const data = req.result;
         if (data) {
           data.qty = newQty;
-          data.price = newPrice.toFixed(2);
-          data.synced = false;
+          data.price = formattedPrice;
+          data.isPriceModified = true;
+          // Ja nosūtīts pa MQTT, atzīmējam kā sinhronizētu (novērš "1⏳" ieķeršanos!)
+          data.synced = isOnline;
+          if (!isOnline) data.pendingUpdate = true;
+
           store.put(data);
 
           const memItem = recentScansMemory.find(x => x.id === currentEditScanId);
           if (memItem) {
             memItem.qty = newQty;
-            memItem.price = data.price;
-            memItem.synced = false;
+            memItem.price = formattedPrice;
+            memItem.synced = isOnline;
           }
 
-          const roomId = getRoomId();
-          if (mqttClient && mqttClient.connected) {
+          const catItem = localCatalog.get(data.ean);
+          if (catItem) {
+            catItem.cena = formattedPrice;
+            catItem.isPriceModified = true;
+          }
+
+          if (isOnline) {
+            const roomId = getRoomId();
             mqttClient.publish(`ean2026/${roomId}/scan_update`, JSON.stringify({
               id: data.id,
+              ean: data.ean,
               qty: newQty,
-              price: data.price,
+              price: formattedPrice,
+              mode: data.mode,
+              deviceId: getDeviceId()
+            }));
+
+            mqttClient.publish(`ean2026/${roomId}/price_update`, JSON.stringify({
+              ean: data.ean,
+              price: formattedPrice,
               deviceId: getDeviceId()
             }));
           }
         }
+
         closeEditModal();
         renderRecentScans();
         updateSyncQueueBadge();
