@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>EAN Skeneris</title>
 
+  <!-- PWA parametri: Pilnekrāna režīms bez pārlūka joslām -->
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f172a">
 
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -25,10 +27,12 @@
     }
   </script>
 
+  <!-- Bibliotēkas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
   <style>
+    /* GPU paātrināts lāzers bez procesora aiztures */
     .laser-viewport {
       position: absolute;
       inset: 1.25rem 2rem;
@@ -197,7 +201,7 @@
 
   </main>
 
-  <!-- 5. MODĀLIS: Gaida administratora apstiprinājumu datorā (Autorizācijas slūžas) -->
+  <!-- 5. MODĀLIS: Gaida administratora apstiprinājumu datorā -->
   <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-3xl animate-pulse">
@@ -503,11 +507,11 @@
     let isCameraRunning = false;
     let wakeLock = null;
 
-    // Autorizācijas stāvoklis un mēģinājumu taimeris (Handshake Retry)
+    // Autorizācija
     let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
     let authRetryInterval = null;
 
-    // Baterijas taupīšana un dīkstāves taimeris (60s)
+    // Dīkstāves taimeris (60s)
     let idleTimer = null;
     let isCameraAsleep = false;
     const IDLE_TIMEOUT_MS = 60000;
@@ -529,7 +533,7 @@
     let isKeypadResetOnNextDigit = true;
     let manualEanValue = "";
 
-    // Edit modal stāvoklis
+    // Edit modal
     let activeEditTarget = 'qty';
     let editQtyValue = "1";
     let editPriceValue = "0.00";
@@ -569,7 +573,7 @@
       renderRecentScans();
     }
 
-    // 2. Darbinieka pārbaude un Autorizācija ar paneli
+    // 2. Darbinieka pārbaude
     function checkWorkerSessionOnStartup() {
       const isSessionActive = sessionStorage.getItem('ean_worker_session_active');
       const savedName = localStorage.getItem('ean_device_id') || '';
@@ -578,7 +582,6 @@
         updateDeviceHeaderUI();
         initMqtt();
 
-        // Ja jau iepriekš sesijā bija apstiprināts
         if (isDeviceApproved) {
           initCameraSystem();
         } else {
@@ -619,7 +622,7 @@
       resetActivityTimer();
     }
 
-    // Autorizācijas slūžas un Handshake Retry (Novērš ieķeršanos)
+    // Autorizācija
     function requestAuthorizationFromAdmin() {
       if (isDeviceApproved) {
         document.getElementById('pendingApprovalModal').classList.add('hidden');
@@ -633,7 +636,6 @@
 
       sendAuthRequestMqtt();
 
-      // Atkārtots pieprasījums ik pēc 3 sekundēm, lai nepazūd tīkla aiztures dēļ
       clearInterval(authRetryInterval);
       authRetryInterval = setInterval(() => {
         if (!isDeviceApproved) {
@@ -681,7 +683,7 @@
       clearInterval(authRetryInterval);
       isDeviceApproved = false;
       sessionStorage.removeItem('ean_device_approved');
-      alert("Administrators datorā noraidīja šīs ierīces pieeju!");
+      alert("Administrators datorā noraidīja pieeju!");
       document.getElementById('pendingApprovalModal').classList.add('hidden');
       promptWorkerChange();
     }
@@ -766,7 +768,7 @@
     // 5. IndexedDB
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v5', 1);
+        const req = indexedDB.open('EanScannerDB_v6', 1);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -933,7 +935,6 @@
       mqttClient.on('connect', () => {
         updateConnectionStatusUI(true);
 
-        // Abonējam katalogu, ack un personīgo autorizācijas kanālu
         mqttClient.subscribe([
           `ean2026/${roomId}/catalog`,
           `ean2026/${roomId}/ack/${deviceId}`,
@@ -949,7 +950,7 @@
         try {
           const payload = JSON.parse(msg.toString());
 
-          // Autorizācijas atbilde no admin paneļa
+          // Saņemts akcepts no datora
           if (topic.includes(`/auth/${deviceId}`)) {
             if (payload.approved === true) {
               onAdminAuthorizationGranted();
@@ -1519,42 +1520,66 @@
       await startCameraWithSelectedLens();
     }
 
-    // Natīvais fotoaparāts
+    // Droša fotoaparāta izsaukšana bez kameras uzkāršanās
     async function triggerNativeCameraPhoto() {
       await stopCameraSafely();
       const input = document.getElementById('nativeCameraInput');
       input.value = '';
       input.click();
+
+      // Sargmehānisms: ja lietotājs kamerā nospiež "Atcelt"
+      window.addEventListener('focus', function onReturn() {
+        window.removeEventListener('focus', onReturn);
+        setTimeout(() => {
+          if (!capturedPhotoBase64 && !isCameraRunning && !isAnyModalOpen()) {
+            startCameraWithSelectedLens();
+          }
+        }, 500);
+      }, { once: true });
     }
 
+    // Drošs foto saspiešanas process (Novērš atmiņas avārijas / OOM)
     function onNativePhotoCaptured(event) {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxDim = 1200;
-          let w = img.width, h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
-            else { w = Math.round((w * maxDim) / h); h = maxDim; }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          capturedPhotoBase64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+      const blobUrl = URL.createObjectURL(file);
+      const img = new Image();
 
-          document.getElementById('photoPreviewImg').src = canvas.toDataURL('image/jpeg', 0.85);
-          document.getElementById('photoThumbnail').classList.remove('hidden');
-          document.getElementById('photoBtnLabel').innerText = "Mainīt foto";
-          triggerHaptic('short');
-        };
-        img.src = e.target.result;
+      img.onload = () => {
+        // Mērogojums uz 800px (kristāldzidrs teksts, bet neuzkarina atmiņu)
+        const maxDim = 800;
+        let w = img.width;
+        let h = img.height;
+
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w);
+            w = maxDim;
+          } else {
+            w = Math.round((w * maxDim) / h);
+            h = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        capturedPhotoBase64 = compressedDataUrl.split(',')[1];
+
+        document.getElementById('photoPreviewImg').src = compressedDataUrl;
+        document.getElementById('photoThumbnail').classList.remove('hidden');
+        document.getElementById('photoBtnLabel').innerText = "Mainīt foto";
+        triggerHaptic('short');
+
+        URL.revokeObjectURL(blobUrl);
       };
-      reader.readAsDataURL(file);
+
+      img.src = blobUrl;
     }
 
     async function confirmScan() {
@@ -1610,7 +1635,7 @@
       const filtered = recentScansMemory.filter(x => x.mode === appMode);
 
       if (filtered.length === 0) {
-        list.innerHTML = `<p class="text-center text-xs text-slate-500 py-6">Šajā režīmā vēl nav skenējumu</p>`;
+        list.innerHTML = `<p class="text-center text-xs text-slate-500 py-4">Šajā režīmā vēl nav skenējumu</p>`;
         return;
       }
 
@@ -1622,8 +1647,8 @@
 
         const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit' });
         const syncDot = it.synced 
-          ? `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>` 
-          : `<span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>`;
+          ? `<span class="w-2 h-2 rounded-full bg-emerald-500"></span>` 
+          : `<span class="w-2 h-2 rounded-full bg-amber-500"></span>`;
 
         row.innerHTML = `
           <div class="truncate flex-1">
@@ -1862,6 +1887,7 @@
       setAppMode(appMode);
       await loadCatalogFromDb();
 
+      // Ielādējam pēdējās 20 pozīcijas RAM masīvā
       const allScans = await getAllScansFromDb();
       allScans.sort((a, b) => b.timestamp - a.timestamp);
       recentScansMemory = allScans.slice(0, 20);
