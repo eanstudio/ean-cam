@@ -99,16 +99,19 @@
     </div>
   </header>
 
-  <!-- 2. Režīmi -->
+  <!-- 2. Režīmu Slēdzis: 4 režīmi (Inventūra, Cenu zīmes, Pārcenošana, Pārbaude) -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
-    <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 border border-white/10 rounded-2xl">
-      <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 text-xs sm:text-sm font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
+    <div class="grid grid-cols-4 gap-1 p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
+      <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
         Inventūra
       </button>
-      <button type="button" id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
+      <button type="button" id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
         Cenu zīmes
       </button>
-      <button type="button" id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white">
+      <button type="button" id="modeBtn_repricing" onclick="setAppMode('repricing')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
+        Pārcenošana
+      </button>
+      <button type="button" id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
         Pārbaude
       </button>
     </div>
@@ -300,7 +303,7 @@
     </div>
   </div>
 
-  <!-- 9. MODĀLIS: Preces kartīte un VAIRĀKU BILŽU (MULTI-PHOTO) UZŅEMŠANA -->
+  <!-- 9. MODĀLIS: Preces kartīte un Vairāku bilžu uzņemšana -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       
@@ -312,16 +315,15 @@
         <p id="modalItemEan" class="text-xs font-mono text-slate-400 tracking-wider">0000000000000</p>
       </div>
 
-      <!-- Vairāku bilžu uzņemšanas bloks (1280px asa kvalitāte) -->
+      <!-- Vairāku bilžu uzņemšanas bloks -->
       <div id="unknownItemBlock" class="hidden space-y-2.5 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
         <div class="flex items-center justify-between">
           <p class="text-xs font-bold text-amber-400 flex items-center gap-1">
-            <span>⚠️</span> <span>Prece nav atlikumu bāzē!</span>
+            <span>⚠️️</span> <span>Prece nav atlikumu bāzē!</span>
           </p>
           <span id="photosCounterBadge" class="text-[10px] font-mono font-bold text-amber-300">0 bildes</span>
         </div>
 
-        <!-- Bilžu sīktēlu galerija ar dzēšanas pogām -->
         <div id="modalPhotoThumbnailsContainer" class="hidden flex items-center gap-2 overflow-x-auto pb-1"></div>
 
         <button type="button" onclick="triggerNativeCameraPhoto()" class="w-full py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition shadow-2xs">
@@ -499,19 +501,15 @@
     let isCameraRunning = false;
     let wakeLock = null;
 
-    // Vairāku bilžu masīvs
     let currentScanPhotos = [];
 
-    // Autorizācija
     let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
     let authRetryInterval = null;
 
-    // Baterijas taupīšana (60s)
     let idleTimer = null;
     let isCameraAsleep = false;
     const IDLE_TIMEOUT_MS = 60000;
 
-    // RAM masīvs: 20 pozīcijas
     let recentScansMemory = [];
     let isScanCooldown = false;
     let lastScannedCode = '';
@@ -520,14 +518,12 @@
     let availableCameras = [];
     let currentCameraIndex = 0;
 
-    // Divsoļu ievade
     let currentModalStep = 'qty';
     let keypadQtyValue = "1";
     let keypadPriceValue = "0.00";
     let isKeypadResetOnNextDigit = true;
     let manualEanValue = "";
 
-    // Edit modal
     let activeEditTarget = 'qty';
     let editQtyValue = "1";
     let editPriceValue = "0.00";
@@ -537,7 +533,7 @@
     let isSoundEnabled = localStorage.getItem('ean_sound_enabled') !== 'false';
     let isPricePromptEnabled = localStorage.getItem('ean_price_prompt') === 'true';
 
-    // 1. Režīmi
+    // 1. Režīmi: 4 režīmi (Inventūra, Cenu zīmes, Pārcenošana, Pārbaude)
     function setAppMode(mode) {
       appMode = mode;
       localStorage.setItem('ean_app_mode', mode);
@@ -545,14 +541,15 @@
       const btns = {
         inventory: document.getElementById('modeBtn_inventory'),
         labels: document.getElementById('modeBtn_labels'),
+        repricing: document.getElementById('modeBtn_repricing'),
         pricecheck: document.getElementById('modeBtn_pricecheck')
       };
 
       Object.keys(btns).forEach(k => {
         if (k === mode) {
-          btns[k].className = "py-2 text-xs sm:text-sm font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs";
+          btns[k].className = "py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs";
         } else {
-          btns[k].className = "py-2 text-xs sm:text-sm font-semibold rounded-xl transition text-slate-400 hover:text-white";
+          btns[k].className = "py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white";
         }
       });
 
@@ -560,6 +557,7 @@
       if (titleEl) {
         if (mode === 'inventory') titleEl.innerText = "Pēdējās 20 inventūras preces:";
         else if (mode === 'labels') titleEl.innerText = "Cenu zīmju rinda:";
+        else if (mode === 'repricing') titleEl.innerText = "Pārcenotās preces:";
         else titleEl.innerText = "Pārbaudītās preces:";
       }
 
@@ -628,7 +626,6 @@
       resetActivityTimer();
     }
 
-    // Autorizācija
     function requestAuthorizationFromAdmin() {
       if (isDeviceApproved) {
         document.getElementById('pendingApprovalModal').classList.add('hidden');
@@ -644,11 +641,8 @@
 
       clearInterval(authRetryInterval);
       authRetryInterval = setInterval(() => {
-        if (!isDeviceApproved) {
-          sendAuthRequestMqtt();
-        } else {
-          clearInterval(authRetryInterval);
-        }
+        if (!isDeviceApproved) sendAuthRequestMqtt();
+        else clearInterval(authRetryInterval);
       }, 3000);
     }
 
@@ -777,7 +771,7 @@
     // 4. IndexedDB
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v9', 1);
+        const req = indexedDB.open('EanScannerDB_v10', 1);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -922,7 +916,7 @@
       }
     }
 
-    // 5. MQTT Tīkls (Ar secīgu sūtīšanu, lai brokeris nenomestu paketes)
+    // 5. MQTT Tīkls
     let isSyncingQueue = false;
 
     function initMqtt() {
@@ -962,11 +956,8 @@
           const payload = JSON.parse(msg.toString());
 
           if (topic.includes(`/auth/${deviceId}`)) {
-            if (payload.approved === true) {
-              onAdminAuthorizationGranted();
-            } else if (payload.approved === false) {
-              onAdminAuthorizationRejected();
-            }
+            if (payload.approved === true) onAdminAuthorizationGranted();
+            else if (payload.approved === false) onAdminAuthorizationRejected();
           }
 
           if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
@@ -974,7 +965,6 @@
             playAudioTone('success');
           }
 
-          // Datora apstiprinājums (Nodzēš Pending statusu!)
           if (topic.includes(`/ack/${deviceId}`) && payload.scanId) {
             await markScanSyncedInDb(payload.scanId);
             const memItem = recentScansMemory.find(x => x.id === payload.scanId);
@@ -1000,7 +990,6 @@
       isSyncingQueue = true;
       const roomId = getRoomId();
 
-      // Sūtam pa vienam ar 150ms pauzi, lai novērstu brokera bufera pārpildi
       for (const item of unsynced) {
         if (!mqttClient.connected) break;
         mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(item));
@@ -1092,9 +1081,7 @@
       }
       if (html5QrScanner) {
         try {
-          if (html5QrScanner.isScanning) {
-            await html5QrScanner.stop();
-          }
+          if (html5QrScanner.isScanning) await html5QrScanner.stop();
         } catch (e) {}
       }
       cameraTrack = null;
@@ -1214,6 +1201,14 @@
       const name = item ? item.nosaukums : 'Nezināma prece';
       const priceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
+      // REŽĪMS: PĀRCENOŠANA (UZREIZ ATVER CENAS IEVADI!)
+      if (appMode === 'repricing') {
+        isScanCooldown = true;
+        openQtyModalVariantsB(cleanEan, name, priceEur, !item, 'price');
+        return;
+      }
+
+      // REŽĪMS: CENU ZĪMES
       if (appMode === 'labels') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1252,6 +1247,7 @@
         return;
       }
 
+      // REŽĪMS: PĀRBAUDE
       if (appMode === 'pricecheck') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1265,6 +1261,7 @@
         return;
       }
 
+      // REŽĪMS: INVENTŪRA
       isScanCooldown = true;
       if (item) {
         playAudioTone('success');
@@ -1362,7 +1359,7 @@
             return;
           }
 
-          const initStep = (appMode === 'labels' && isPricePromptEnabled) ? 'price' : 'qty';
+          const initStep = (appMode === 'repricing' || (appMode === 'labels' && isPricePromptEnabled)) ? 'price' : 'qty';
           openQtyModalVariantsB(it.ean, it.nosaukums, priceEur, false, initStep);
         };
 
@@ -1424,8 +1421,8 @@
       await stopCameraSafely();
 
       activeScanData = { ean, name, price, isUnknown };
-      currentScanPhotos = []; // Notīrām iepriekšējās bildes
-      keypadQtyValue = appMode === 'labels' ? "1" : "1";
+      currentScanPhotos = [];
+      keypadQtyValue = (appMode === 'labels' || appMode === 'repricing') ? "1" : "1";
       keypadPriceValue = price;
 
       document.getElementById('modalItemName').innerText = name;
@@ -1582,7 +1579,6 @@
       }
     }
 
-    // FOTOKAMERAS IZSAUKŠANA UN 1280PX ASA KOMPRESIJA (BEZ OOM AVĀRIJĀM)
     async function triggerNativeCameraPhoto() {
       await stopCameraSafely();
       const input = document.getElementById('nativeCameraInput');
@@ -1598,7 +1594,6 @@
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          // Augsta asuma mērogojums uz 1280px (sīks teksts un EAN ir lieliski salasāms)
           const maxDim = 1280;
           let w = img.width;
           let h = img.height;
@@ -1621,7 +1616,6 @@
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, w, h);
 
-          // Saspiežam uz ~100KB JPEG (ideāli piemērots MQTT tīklam)
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.80);
           const base64Data = compressedDataUrl.split(',')[1];
 
@@ -1645,15 +1639,15 @@
       }
 
       const scanRecord = {
-        id: (appMode === 'labels' ? 'lbl_' : 'inv_') + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        id: (appMode === 'repricing' ? 'rep_' : (appMode === 'labels' ? 'lbl_' : 'inv_')) + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
         deviceId: getDeviceId(),
         ean: activeScanData.ean,
         name: activeScanData.name,
         price: price.toFixed(2),
         qty: qty,
         isUnknown: activeScanData.isUnknown,
-        photos: currentScanPhotos, // Vairāku bilžu masīvs
-        photoBase64: currentScanPhotos[0] || null, // Savietojamībai ar vecākām versijām
+        photos: currentScanPhotos,
+        photoBase64: currentScanPhotos[0] || null,
         mode: appMode,
         timestamp: Date.now(),
         synced: false
@@ -1688,7 +1682,6 @@
       }
     }
 
-    // 11. RAM Saraksta Renderēšana (20 pozīcijas)
     function renderRecentScans() {
       const list = document.getElementById('recentScansList');
       const filtered = recentScansMemory.filter(x => x.mode === appMode);
@@ -1725,7 +1718,6 @@
       });
     }
 
-    // 12. Labošana no saraksta
     async function openEditModal(scanId) {
       await stopCameraSafely();
       const all = await getAllScansFromDb();
@@ -1741,7 +1733,7 @@
       document.getElementById('editItemEan').innerText = `EAN: ${item.ean}`;
 
       const switcher = document.getElementById('editTargetSwitcher');
-      if (isPricePromptEnabled || appMode === 'labels') {
+      if (isPricePromptEnabled || appMode === 'labels' || appMode === 'repricing') {
         switcher.classList.remove('hidden');
       } else {
         switcher.classList.add('hidden');
@@ -1877,9 +1869,7 @@
 
     async function requestWakeLock() {
       try {
-        if ('wakeLock' in navigator) {
-          wakeLock = await navigator.wakeLock.request('screen');
-        }
+        if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
       } catch (err) {}
     }
 
