@@ -421,6 +421,18 @@
     let authRetryInterval = null;
     let pingInterval = null;
     let isAuthRequiredByAdmin = localStorage.getItem('ean_auth_required') !== 'false';
+    // Apstiprinājums attiecas uz konkrētu veikala istabu. Ja QR kods ved uz citu istabu (piem., admins nomainīja nosaukumu vai iztīrīja datus), vecais apstiprinājums vairs nav derīgs.
+    (function reconcileRoomState() {
+      try {
+        const fromHash = new URLSearchParams(window.location.hash.replace('#', '')).get('room');
+        const stored = localStorage.getItem('ean_room_id');
+        if (fromHash && stored && fromHash !== stored) {
+          localStorage.removeItem('ean_device_approved_time');
+          sessionStorage.removeItem('ean_device_approved');
+          isDeviceApproved = false;
+        }
+      } catch (e) {}
+    })();
 
     let idleTimer = null;
     let isCameraAsleep = false;
@@ -640,6 +652,7 @@
       sessionStorage.setItem('ean_device_approved', 'true');
       localStorage.setItem('ean_device_approved_time', Date.now().toString());
       clearInterval(authRetryInterval);
+      setTimeout(() => { try { syncOfflineQueue(); } catch (e) {} }, 300);
 
       document.getElementById('pendingApprovalModal').classList.add('hidden');
       updateModesVisibility();
@@ -647,6 +660,14 @@
       playAudioTone('success');
       triggerHaptic('short');
       setTimeout(() => { if (!isCameraRunning) initCameraSystem(); }, 200);
+    }
+
+    function onAdminReauthRequired() {
+      isDeviceApproved = false;
+      sessionStorage.removeItem('ean_device_approved');
+      localStorage.removeItem('ean_device_approved_time');
+      updateModesVisibility();
+      requestAuthorizationFromAdmin();
     }
 
     function onAdminAuthorizationRejected() {
@@ -933,7 +954,7 @@
           if (typeof cb === 'function') cb(sent ? null : new Error('Nav savienojuma'));
           return sent;
         },
-        end() { mqttLinks.forEach(l => { try { l.client.end(true); } catch (e) {} }); mqttLinks = []; p2pStop(); }
+        end() { mqttLinks.forEach(l => { l.dead = true; clearTimeout(l.timer); try { l.client.end(true); } catch (e) {} }); mqttLinks = []; p2pStop(); }
       };
     }
     // Wi-Fi P2P: viena lapa ("host") gaida, otra ("guest") pieslēdzas. Signalizācija iet pa 443 portu, pati datu plūsma – tieši starp ierīcēm.
@@ -989,17 +1010,18 @@
       if (key === mqttKey && (p2pPeer || mqttLinks.some(l => !l.client.disconnected))) { onStatus(); return; }
       mqttKey = key;
       const gen = ++mqttGen;
-      mqttLinks.forEach(l => { try { l.client.end(true); } catch (e) {} });
+      mqttLinks.forEach(l => { l.dead = true; clearTimeout(l.timer); try { l.client.end(true); } catch (e) {} });
       mqttLinks = [];
       mqttClient = mqttBuildFacade();
       if (typeof mqtt !== 'undefined') MQTT_BROKERS.forEach((url, index) => {
         const client = mqtt.connect(url, {
           clientId: `${clientPrefix}_${Math.random().toString(36).substring(2, 10)}`,
-          clean: true, keepalive: 30, connectTimeout: 8000, reconnectPeriod: 3000, resubscribe: false
+          clean: true, keepalive: 30, connectTimeout: 8000, reconnectPeriod: 0, resubscribe: false
         });
-        const link = { client, index };
+        const link = { client, index, fails: 0, dead: false, timer: null };
         mqttLinks.push(link);
         client.on('connect', () => {
+          link.fails = 0;
           if (gen !== mqttGen) { try { client.end(true); } catch (e) {} return; }
           client.subscribe(topics, err => {
             if (gen !== mqttGen) return;
@@ -1014,7 +1036,15 @@
           onMessage(topic, msg);
         });
         client.on('error', e => { console.warn('MQTT kļūda (' + mqttBrokerName(index) + '):', e && e.message); });
-        client.on('close', () => { if (gen === mqttGen) onStatus(); });
+        client.on('close', () => {
+          if (gen !== mqttGen || link.dead) return;
+          onStatus();
+          // Atkārtota pieslēgšanās ar augošu pauzi (3s → 60s), lai publiskie brokeri nenobloķē IP par pārāk biežiem mēģinājumiem
+          const delay = Math.min(60000, 3000 * Math.pow(2, Math.min(link.fails, 5))) + Math.random() * 1000;
+          link.fails++;
+          clearTimeout(link.timer);
+          link.timer = setTimeout(() => { if (gen === mqttGen && !link.dead) { try { client.reconnect(); } catch (e) {} } }, delay);
+        });
         client.on('offline', () => { if (gen === mqttGen) onStatus(); });
       });
       if (p2pRole) p2pStart(p2pRole, p2pRoom, gen, topics, onMessage, onStatus, () => { if (onSubscribed) onSubscribed('p2p'); });
@@ -1061,7 +1091,7 @@
           }
           if (topic.includes(`/auth/${deviceId}`)) {
             if (payload.approved === true) onAdminAuthorizationGranted();
-            else if (payload.approved === false) onAdminAuthorizationRejected();
+            else if (payload.approved === false) { if (payload.reauth) onAdminReauthRequired(); else onAdminAuthorizationRejected(); }
             return;
           }
           if (topic.includes(`/ack/${deviceId}`) && payload.scanId) { markScanSyncedInDb(payload.scanId); return; }
