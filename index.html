@@ -67,24 +67,31 @@
     </div>
   </header>
 
-  <!-- Režīmi ar bloķēšanas ikonām -->
+  <!-- Režīmi: Viesa režīmā tiek rādīta TIKAI pārbaude! -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
-    <div class="grid grid-cols-4 gap-1 p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
-      <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1">
-        <span id="lockIcon_inventory" class="hidden text-[10px]">🔒</span>
-        <span>Inventūra</span>
-      </button>
-      <button type="button" id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
-        <span id="lockIcon_labels" class="hidden text-[10px]">🔒</span>
-        <span>Cenu zīmes</span>
-      </button>
-      <button type="button" id="modeBtn_repricing" onclick="setAppMode('repricing')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
-        <span id="lockIcon_repricing" class="hidden text-[10px]">🔒</span>
-        <span>Pārcenošana</span>
-      </button>
-      <button type="button" id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
-        Pārbaude
-      </button>
+    <div id="modesContainer" class="p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
+      <div id="fullModesGrid" class="hidden grid grid-cols-4 gap-1">
+        <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs">
+          Inventūra
+        </button>
+        <button type="button" id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
+          Cenu zīmes
+        </button>
+        <button type="button" id="modeBtn_repricing" onclick="setAppMode('repricing')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
+          Pārcenošana
+        </button>
+        <button type="button" id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
+          Pārbaude
+        </button>
+      </div>
+
+      <!-- Viesa režīma poga: redzama, kamēr nav atļauts -->
+      <div id="guestModeSingleBar" class="flex items-center justify-between px-3 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-xl">
+        <span class="text-xs font-bold font-mono text-amber-400 flex items-center gap-1.5">
+          <span>🔍</span> <span>Cenu pārbaude (Gaida atļauju)</span>
+        </span>
+        <span class="text-[10px] font-mono font-bold bg-amber-400/20 text-amber-300 px-2 py-0.5 rounded-full">Viesis</span>
+      </div>
     </div>
   </div>
 
@@ -133,7 +140,7 @@
 
     <div class="flex justify-between items-center px-1 text-xs font-mono text-slate-400">
       <span id="catalogStatsText">Bāze: 0 preces</span>
-      <span id="currentRoomText">Telpa: veikals-1</span>
+      <span id="currentRoomText">Telpa: ...</span>
     </div>
 
     <!-- Saraksts -->
@@ -150,14 +157,14 @@
     </div>
   </main>
 
-  <!-- MODĀLIS: Gaida apstiprinājumu (Ar viesa režīmu) -->
+  <!-- MODĀLIS: Gaida apstiprinājumu -->
   <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-3xl animate-pulse">⏳</div>
       <div>
         <h3 class="text-base font-bold text-white uppercase font-mono tracking-tight">Gaida apstiprinājumu</h3>
         <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
-          Pieprasījums nosūtīts datoram. Administratoram panelī jānospiež <strong class="text-emerald-400">[✓ Atļaut]</strong>.
+          Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat pārbaudīt cenas bez saglabāšanas.
         </p>
       </div>
       <div class="p-3 bg-black/50 rounded-2xl border border-white/10 text-xs font-mono space-y-1">
@@ -166,7 +173,7 @@
       </div>
       <div class="space-y-2 pt-1">
         <button type="button" onclick="continueInGuestMode()" class="w-full py-2.5 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold transition">
-          Pārbaudīt cenas bez atļaujas (Viesa režīms) 🔍
+          Pārbaudīt cenas (Viesa režīms) 🔍
         </button>
         <div class="flex gap-2">
           <button type="button" onclick="retryAuthRequest()" class="w-1/2 py-2 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold transition">Sūtīt vēlreiz 🔄</button>
@@ -185,7 +192,7 @@
         <p class="text-xs text-slate-400 mt-1">Ievadiet savu vārdu vai darbinieka ID numuru:</p>
       </div>
       <div>
-        <input type="text" id="loginWorkerInput" placeholder="Vārds vai ID (piem., Jānis)" class="w-full h-14 px-4 text-center text-lg bg-black/60 border border-white/20 rounded-2xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
+        <input type="text" id="loginWorkerInput" placeholder="Vārds vai ID..." class="w-full h-14 px-4 text-center text-lg bg-black/60 border border-white/20 rounded-2xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
       </div>
       <button type="button" onclick="submitWorkerLogin()" class="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-base transition shadow-lg shadow-emerald-600/30 active:scale-95">
         Sākt darbu ✓
@@ -243,7 +250,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Preces kartīte un daudzuma/cenas ievade -->
+  <!-- MODĀLIS: Preces kartīte -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
@@ -452,7 +459,29 @@
     let isSoundEnabled = localStorage.getItem('ean_sound_enabled') !== 'false';
     let isPricePromptEnabled = localStorage.getItem('ean_price_prompt') === 'true';
 
-    // 1. Režīmi ar bloķēšanu neapstiprinātiem
+    // 1. DINAMISKA REŽĪMU REDZAMĪBA (VIESIS REDZ TIKAI PĀRBAUDI!)
+    function updateModesVisibility() {
+      const fullGrid = document.getElementById('fullModesGrid');
+      const guestBar = document.getElementById('guestModeSingleBar');
+
+      if (!isDeviceApproved) {
+        // Paslēpjam visas 3 darba sadaļas
+        fullGrid?.classList.add('hidden');
+        guestBar?.classList.remove('hidden');
+        appMode = 'pricecheck';
+        localStorage.setItem('ean_app_mode', 'pricecheck');
+      } else {
+        // Rādām visas sadaļas
+        guestBar?.classList.add('hidden');
+        fullGrid?.classList.remove('hidden');
+        if (appMode === 'pricecheck') {
+          appMode = 'inventory';
+          localStorage.setItem('ean_app_mode', 'inventory');
+        }
+      }
+      renderModeButtonsState();
+    }
+
     function setAppMode(mode) {
       if (!isDeviceApproved && mode !== 'pricecheck') {
         playAudioTone('warning');
@@ -463,7 +492,12 @@
 
       appMode = mode;
       localStorage.setItem('ean_app_mode', mode);
+      renderModeButtonsState();
+      resetActivityTimer();
+      renderRecentScans();
+    }
 
+    function renderModeButtonsState() {
       const btns = {
         inventory: document.getElementById('modeBtn_inventory'),
         labels: document.getElementById('modeBtn_labels'),
@@ -472,43 +506,24 @@
       };
 
       Object.keys(btns).forEach(k => {
-        btns[k].className = k === mode 
+        if (!btns[k]) return;
+        btns[k].className = k === appMode 
           ? "py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1"
           : "py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1";
       });
 
       const titleEl = document.getElementById('listTitleLabel');
       if (titleEl) {
-        if (mode === 'inventory') titleEl.innerText = "Pēdējās 20 inventūras preces:";
-        else if (mode === 'labels') titleEl.innerText = "Cenu zīmju rinda:";
-        else if (mode === 'repricing') titleEl.innerText = "Pārcenotās preces:";
+        if (appMode === 'inventory') titleEl.innerText = "Pēdējās 20 inventūras preces:";
+        else if (appMode === 'labels') titleEl.innerText = "Cenu zīmju rinda:";
+        else if (appMode === 'repricing') titleEl.innerText = "Pārcenotās preces:";
         else titleEl.innerText = "Pārbaudītās preces:";
-      }
-
-      resetActivityTimer();
-      renderRecentScans();
-    }
-
-    function updateModeLocksUI() {
-      const lockInv = document.getElementById('lockIcon_inventory');
-      const lockLbl = document.getElementById('lockIcon_labels');
-      const lockRep = document.getElementById('lockIcon_repricing');
-
-      if (!isDeviceApproved) {
-        lockInv?.classList.remove('hidden');
-        lockLbl?.classList.remove('hidden');
-        lockRep?.classList.remove('hidden');
-      } else {
-        lockInv?.classList.add('hidden');
-        lockLbl?.classList.add('hidden');
-        lockRep?.classList.add('hidden');
       }
     }
 
     function continueInGuestMode() {
       document.getElementById('pendingApprovalModal').classList.add('hidden');
-      setAppMode('pricecheck');
-      updateModeLocksUI();
+      updateModesVisibility();
       if (!isCameraRunning) initCameraSystem();
     }
 
@@ -523,7 +538,7 @@
         sessionStorage.setItem('ean_device_approved', 'true');
         isDeviceApproved = true;
         updateDeviceHeaderUI();
-        updateModeLocksUI();
+        updateModesVisibility();
         initMqtt();
         setTimeout(() => { initCameraSystem(); }, 200);
         return;
@@ -531,7 +546,7 @@
 
       if (isSessionActive === 'true' && savedName) {
         updateDeviceHeaderUI();
-        updateModeLocksUI();
+        updateModesVisibility();
         initMqtt();
         if (isDeviceApproved) {
           setTimeout(() => initCameraSystem(), 200);
@@ -573,7 +588,7 @@
     function requestAuthorizationFromAdmin() {
       if (isDeviceApproved) {
         document.getElementById('pendingApprovalModal').classList.add('hidden');
-        updateModeLocksUI();
+        updateModesVisibility();
         setTimeout(() => { if (!isCameraRunning) initCameraSystem(); }, 150);
         return;
       }
@@ -611,8 +626,7 @@
       clearInterval(authRetryInterval);
 
       document.getElementById('pendingApprovalModal').classList.add('hidden');
-      updateModeLocksUI();
-      if (appMode === 'pricecheck') setAppMode('inventory');
+      updateModesVisibility();
 
       playAudioTone('success');
       triggerHaptic('short');
@@ -869,7 +883,9 @@
         ]);
 
         mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, time: Date.now() }));
-        syncOfflineQueue();
+        if (isDeviceApproved) {
+          syncOfflineQueue();
+        }
         sendAuthRequestMqtt();
       });
 
@@ -883,8 +899,7 @@
             sessionStorage.removeItem('ean_device_approved');
             sessionStorage.removeItem('ean_worker_session_active');
             localStorage.removeItem('ean_device_approved_time');
-            updateModeLocksUI();
-            setAppMode('pricecheck');
+            updateModesVisibility();
             alert("Administrators datorā ir pārtraucis sesiju!\nPieeja ir atsaukta.");
             return;
           }
@@ -920,6 +935,7 @@
       mqttClient.on('error', () => updateConnectionStatusUI(false));
     }
 
+    // Sinhronizācija notiek TIKAI un vienīgi tad, ja ierīce ir apstiprināta!
     async function syncOfflineQueue() {
       if (isSyncingQueue || !isDeviceApproved) return;
       const all = await getAllScansFromDb();
@@ -931,7 +947,7 @@
       const roomId = getRoomId();
 
       for (const item of unsynced) {
-        if (!mqttClient.connected) break;
+        if (!mqttClient.connected || !isDeviceApproved) break;
         if (item.pendingUpdate) {
           mqttClient.publish(`ean2026/${roomId}/scan_update`, JSON.stringify({
             id: item.id, ean: item.ean, qty: item.qty, price: item.price, mode: item.mode, deviceId: getDeviceId()
@@ -955,7 +971,7 @@
       const badge = document.getElementById('syncBadge');
       const label = document.getElementById('unsyncedCount');
       if (badge && label) {
-        if (count > 0) { badge.classList.remove('hidden'); label.innerText = count; }
+        if (count > 0 && isDeviceApproved) { badge.classList.remove('hidden'); label.innerText = count; }
         else { badge.classList.add('hidden'); }
       }
     }
@@ -1095,6 +1111,7 @@
         : "w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
+    // Skenēšanas apstrāde
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
@@ -1107,8 +1124,8 @@
       const name = item ? item.nosaukums : 'Nezināma prece';
       const basePriceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
-      // Ja nav apstiprināts -> TIKAI un vienīgi cenu pārbaude bez saglabāšanas!
-      if (appMode === 'pricecheck' || !isDeviceApproved) {
+      // JA NAV APSTIPRINĀTS -> TIKAI CENU PĀRBAUDE! NEKĀDAS SAGLABĀŠANAS!
+      if (!isDeviceApproved || appMode === 'pricecheck') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
         lastScannedTime = now;
@@ -1231,7 +1248,7 @@
         div.className = "p-3 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/15 flex items-center justify-between gap-3 cursor-pointer transition";
         div.onclick = () => {
           document.getElementById('catalogSearchModal').classList.add('hidden');
-          if (appMode === 'pricecheck' || !isDeviceApproved) {
+          if (!isDeviceApproved || appMode === 'pricecheck') {
             playAudioTone('success');
             triggerHaptic('short');
             showScanToast(it.nosaukums, it.ean, priceEur, null);
@@ -1768,6 +1785,10 @@
     }
 
     function manualSync() {
+      if (!isDeviceApproved) {
+        alert("Sinhronizācija nav atļauta, kamēr administrators nav apstiprinājis ierīci!");
+        return;
+      }
       syncOfflineQueue();
       alert("Sinhronizācija palaista!");
     }
@@ -1788,18 +1809,23 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       requestWakeLock();
-      setAppMode(appMode);
       await loadCatalogFromDb();
 
       const allScans = await getAllScansFromDb();
       allScans.sort((a, b) => b.timestamp - a.timestamp);
       recentScansMemory = allScans.slice(0, 20);
       renderRecentScans();
-      await updateSyncQueueBadge();
 
+      // Pārbaudām autorizāciju un nosakām režīmu redzamību
       checkWorkerSessionOnStartup();
+      updateModesVisibility();
       resetActivityTimer();
-      setInterval(() => { syncOfflineQueue(); }, 3500);
+
+      setInterval(() => {
+        if (isDeviceApproved) {
+          syncOfflineQueue();
+        }
+      }, 3500);
     });
   </script>
 </body>
