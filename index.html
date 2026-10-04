@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.10</title>
+  <title>EAN Skeneris Pro V2.6</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -153,6 +153,13 @@
     </div>
   </main>
 
+  <div id="lockedAccessModal" class="hidden fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+      <div class="text-4xl">🔒</div>
+      <div><h3 class="text-base font-bold text-white">Sadaļa ir bloķēta</h3><p class="text-xs text-slate-300 mt-2">Lai izmantotu Inventūru, Cenu zīmes vai Pārcenošanu, nepieciešama administratora atļauja.</p></div>
+      <div class="flex gap-2"><button type="button" onclick="closeLockedAccessModal()" class="w-1/3 py-2.5 bg-white/10 text-slate-300 rounded-xl text-xs font-bold">Atcelt</button><button type="button" onclick="requestPermissionFromLockedModal()" class="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">Pieprasīt atļauju</button></div>
+    </div>
+  </div>
   <!-- MODĀLIS: Gaida apstiprinājumu -->
   <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
@@ -413,9 +420,9 @@
 
     let currentScanPhotos = [];
     let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
-    let authRetryInterval = null;
-    let pingInterval = null;
     let isAuthRequiredByAdmin = localStorage.getItem('ean_auth_required') !== 'false';
+    let pingInterval = null;
+    let authRetryInterval = null;
 
     let idleTimer = null;
     let isCameraAsleep = false;
@@ -483,7 +490,7 @@
       if (isAuthRequiredByAdmin && !isDeviceApproved && mode !== 'pricecheck') {
         playAudioTone('warning');
         triggerHaptic('warning');
-        requestAuthorizationFromAdmin();
+        document.getElementById('lockedAccessModal').classList.remove('hidden');
         return;
       }
 
@@ -518,6 +525,26 @@
       }
     }
 
+    function closeLockedAccessModal() { document.getElementById('lockedAccessModal').classList.add('hidden'); }
+    function requestPermissionFromLockedModal() {
+      closeLockedAccessModal();
+      isDeviceApproved = false;
+      requestAuthorizationFromAdmin();
+    }
+    function applyAdminAuthSetting(required) {
+      isAuthRequiredByAdmin = required;
+      localStorage.setItem('ean_auth_required', required ? 'true' : 'false');
+      if (!required) {
+        isDeviceApproved = true;
+        sessionStorage.setItem('ean_device_approved', 'true');
+        document.getElementById('pendingApprovalModal').classList.add('hidden');
+        clearInterval(authRetryInterval);
+      } else if (!localStorage.getItem('ean_device_approved_time')) {
+        isDeviceApproved = false;
+        sessionStorage.removeItem('ean_device_approved');
+      }
+      updateModesVisibility();
+    }
     function continueInGuestMode() {
       document.getElementById('pendingApprovalModal').classList.add('hidden');
       updateModesVisibility();
@@ -590,9 +617,6 @@
         return;
       }
 
-      const pendingTitle=document.querySelector('#pendingApprovalModal h3'); const pendingDesc=document.querySelector('#pendingApprovalModal p.text-xs');
-      if(pendingTitle) pendingTitle.innerText='Gaida apstiprinājumu';
-      if(pendingDesc) pendingDesc.innerText='Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat veikt tikai cenu pārbaudi.';
       document.getElementById('pendingWorkerNameLabel').innerText = getDeviceId();
       document.getElementById('pendingDeviceIdLabel').innerText = getDeviceId();
       document.getElementById('pendingApprovalModal').classList.remove('hidden');
@@ -606,24 +630,13 @@
     }
 
     function sendAuthRequestMqtt() {
-      if (!mqttClient || !mqttClient.connected) {
-        updateConnectionStatusUI(false);
-        return false;
-      }
+      if (!mqttClient || !mqttClient.connected) return;
       const roomId = getRoomId();
       const deviceId = getDeviceId();
-      mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({ deviceId, workerName: deviceId, requestId: `${Date.now()}_${Math.random().toString(36).slice(2,7)}`, time: Date.now() }));
-      return true;
+      mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({ deviceId, workerName: deviceId, time: Date.now() }));
     }
 
-    function retryAuthRequest() {
-      isDeviceApproved = false;
-      sessionStorage.removeItem('ean_device_approved');
-      document.getElementById('pendingApprovalModal').classList.remove('hidden');
-      sendAuthRequestMqtt();
-      clearInterval(authRetryInterval);
-      authRetryInterval = setInterval(() => { if (!isDeviceApproved) sendAuthRequestMqtt(); }, 3000);
-    }
+    function retryAuthRequest() { sendAuthRequestMqtt(); }
     function cancelAuthAndChangeWorker() {
       clearInterval(authRetryInterval);
       document.getElementById('pendingApprovalModal').classList.add('hidden');
@@ -649,14 +662,8 @@
       isDeviceApproved = false;
       sessionStorage.removeItem('ean_device_approved');
       localStorage.removeItem('ean_device_approved_time');
-      updateModesVisibility();
-      document.getElementById('pendingApprovalModal').classList.remove('hidden');
-      const title = document.querySelector('#pendingApprovalModal h3');
-      const desc = document.querySelector('#pendingApprovalModal p.text-xs');
-      if (title) title.innerText = 'Pieeja noraidīta';
-      if (desc) desc.innerText = 'Administrators noraidīja iepriekšējo pieprasījumu. Varat nospiest “Sūtīt vēlreiz” un pieprasīt atļauju atkārtoti.';
-      playAudioTone('warning');
-      triggerHaptic('warning');
+      alert("Administrators datorā noraidīja pieeju!\nJums ir atļauta tikai cenu pārbaude.");
+      continueInGuestMode();
     }
 
     document.addEventListener('visibilitychange', async () => {
@@ -693,7 +700,7 @@
     }
 
     function isAnyModalOpen() {
-      const modalIds = ['pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal'];
+      const modalIds = ['lockedAccessModal', 'pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal'];
       return modalIds.some(id => {
         const el = document.getElementById(id);
         return el && !el.classList.contains('hidden');
@@ -885,63 +892,88 @@
     function initMqtt() {
       const roomId = getRoomId();
       const deviceId = getDeviceId();
-      if (typeof mqtt === 'undefined') { updateConnectionStatusUI(false); return; }
-      if (mqttClient) { try { mqttClient.end(true); } catch (e) {} }
+      const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
+
+      if (mqttClient) {
+        try { mqttClient.end(true); } catch (e) {}
+      }
       updateConnectionStatusUI(false);
-      mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+
+      mqttClient = mqtt.connect(brokerUrl, {
         clientId: `ean_mob_${deviceId}_${Math.random().toString(36).substring(2, 7)}`,
-        clean: true, connectTimeout: 10000, reconnectPeriod: 2500
+        clean: true,
+        connectTimeout: 5000,
+        reconnectPeriod: 2500
       });
+
       mqttClient.on('connect', () => {
         updateConnectionStatusUI(true);
-        const topics = [
-          `ean2026/${roomId}/catalog`, `ean2026/${roomId}/ack/${deviceId}`,
-          `ean2026/${roomId}/auth/${deviceId}`, `ean2026/${roomId}/auth_revoke`,
-          `ean2026/${roomId}/price_update`, `ean2026/${roomId}/auth_setting`
-        ];
-        mqttClient.subscribe(topics, err => {
-          if (err) { console.error('MQTT subscribe kļūda:', err); return; }
-          const heartbeat = () => {
-            if (mqttClient && mqttClient.connected) mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, workerName: deviceId, approved: isDeviceApproved, time: Date.now() }));
-          };
-          heartbeat(); clearInterval(pingInterval); pingInterval = setInterval(heartbeat, 15000);
-          if (isDeviceApproved) syncOfflineQueue();
-          else sendAuthRequestMqtt();
-        });
+        mqttClient.subscribe([
+          `ean2026/${roomId}/catalog`,
+          `ean2026/${roomId}/ack/${deviceId}`,
+          `ean2026/${roomId}/auth/${deviceId}`,
+          `ean2026/${roomId}/auth_revoke`,
+          `ean2026/${roomId}/price_update`,
+          `ean2026/${roomId}/auth_setting`
+        ]);
+
+        const sendHeartbeat = () => {
+          if (mqttClient && mqttClient.connected) {
+            mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, workerName: deviceId, approved: isDeviceApproved, time: Date.now() }));
+          }
+        };
+        sendHeartbeat();
+        clearInterval(pingInterval);
+        pingInterval = setInterval(sendHeartbeat, 15000);
+        if (isDeviceApproved) {
+          syncOfflineQueue();
+        }
+        sendAuthRequestMqtt();
       });
+
       mqttClient.on('message', async (topic, msg) => {
         try {
           const payload = JSON.parse(msg.toString());
+
           if (topic.endsWith('/auth_setting')) {
-            isAuthRequiredByAdmin = payload.required !== false;
-            localStorage.setItem('ean_auth_required', isAuthRequiredByAdmin ? 'true' : 'false');
-            if (!isAuthRequiredByAdmin) { isDeviceApproved = true; sessionStorage.setItem('ean_device_approved', 'true'); }
-            else if (!localStorage.getItem('ean_device_approved_time')) { isDeviceApproved = false; sessionStorage.removeItem('ean_device_approved'); }
-            updateModesVisibility(); return;
-          }
-          if (topic.endsWith('/auth_revoke')) {
-            isDeviceApproved = false; sessionStorage.removeItem('ean_device_approved');
-            sessionStorage.removeItem('ean_worker_session_active'); localStorage.removeItem('ean_device_approved_time');
-            updateModesVisibility(); alert('Administrators datorā ir pārtraucis sesiju!'); return;
-          }
-          if (topic.includes(`/auth/${deviceId}`)) {
-            if (payload.approved === true) onAdminAuthorizationGranted();
-            else if (payload.approved === false) onAdminAuthorizationRejected();
+            applyAdminAuthSetting(payload.required !== false);
             return;
           }
-          if (topic.includes(`/ack/${deviceId}`) && payload.scanId) { markQueueItemSynced(payload.scanId); return; }
-          if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
-            productDatabase = new Map(payload.items.map(x => [normalizeEan(x.ean), x]));
-            localStorage.setItem('ean_mobile_catalog', JSON.stringify(payload.items));
-            localStorage.setItem('ean_mobile_catalog_time', Date.now().toString());
-            updateCatalogStatusUI(); return;
+          if (topic.endsWith('/auth_revoke')) {
+            isDeviceApproved = false;
+            sessionStorage.removeItem('ean_device_approved');
+            sessionStorage.removeItem('ean_worker_session_active');
+            localStorage.removeItem('ean_device_approved_time');
+            updateModesVisibility();
+            alert("Administrators datorā ir pārtraucis sesiju!\nPieeja ir atsaukta.");
+            return;
           }
-          if (topic.endsWith('/price_update')) processRemotePriceUpdate(payload);
-        } catch (e) { console.error('MQTT ziņas kļūda:', e); }
+
+          if (topic.includes(`/auth/${deviceId}`)) {
+            if (payload.approved === true) onAdminAuthorizationGranted();
+            else if (payload.approved === false) {
+              onAdminAuthorizationRejected();
+              if (payload.revoked) alert("Administrators pārtrauca tieši jūsu sesiju.");
+            }
+          }
+
+          if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
+            await saveCatalogBatchToDb(payload.items);
+            playAudioTone('success');
+          }
+
+          if (topic.includes(`/ack/${deviceId}`) && payload.scanId) {
+            await markScanSyncedInDb(payload.scanId);
+            const memItem = recentScansMemory.find(x => x.id === payload.scanId);
+            if (memItem) memItem.synced = true;
+            renderRecentScans();
+            updateSyncQueueBadge();
+          }
+        } catch (e) {}
       });
-      mqttClient.on('error', err => { console.error('MQTT tālruņa kļūda:', err); updateConnectionStatusUI(false); });
+
       mqttClient.on('offline', () => updateConnectionStatusUI(false));
-      mqttClient.on('close', () => updateConnectionStatusUI(false));
+      mqttClient.on('error', () => updateConnectionStatusUI(false));
     }
 
     async function syncOfflineQueue() {
