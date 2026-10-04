@@ -28,6 +28,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js"></script>
   <script>window.mqtt || document.write('<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"><\/script>');</script>
   <script>window.mqtt || document.write('<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"><\/script>');</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js"></script>
+  <script>window.Peer || document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');</script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
   <style>
@@ -405,7 +407,7 @@
   <script>
     let html5QrScanner = null;
     let mqttClient = null;
-    const MQTT_BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'];
+    const MQTT_BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt', 'wss://mqtt.eclipseprojects.io:443/mqtt'];
     let isTorchOn = false;
     let cameraTrack = null;
     let localCatalog = new Map();
@@ -886,9 +888,13 @@
     let isSyncingQueue = false;
 
 
-    // === MQTT: vienlaikus visi brokeri (nav atkarības no tā, kurā brokerī nonāk otra puse) ===
+    // === Savienojums: vairāki MQTT brokeri vienlaikus + Wi-Fi P2P (PeerJS) ===
     let mqttLinks = [];
     let mqttGen = 0;
+    let mqttKey = '';
+    let p2pPeer = null;
+    let p2pTimer = null;
+    const p2pConns = new Set();
     const mqttSeen = new Map();
     function mqttIsDuplicate(topic, msg) {
       const now = Date.now();
@@ -898,33 +904,95 @@
       mqttSeen.set(key, now);
       return false;
     }
-    function mqttBrokerName(i) { return /hivemq/.test(MQTT_BROKERS[i]) ? 'HiveMQ' : /emqx/.test(MQTT_BROKERS[i]) ? 'EMQX' : ('Broker ' + (i + 1)); }
-    function mqttConnectedNames() { return mqttLinks.filter(l => l.client.connected).map(l => mqttBrokerName(l.index)); }
+    function p2pOpenCount() { let n = 0; p2pConns.forEach(c => { if (c.open) n++; }); return n; }
+    function mqttBrokerName(i) { return /hivemq/.test(MQTT_BROKERS[i]) ? 'HiveMQ' : /emqx/.test(MQTT_BROKERS[i]) ? 'EMQX' : /eclipse/.test(MQTT_BROKERS[i]) ? 'Eclipse' : ('Broker ' + (i + 1)); }
+    function mqttConnectedNames() {
+      const n = mqttLinks.filter(l => l.client.connected).map(l => mqttBrokerName(l.index));
+      if (p2pOpenCount() > 0) n.push('Wi-Fi P2P');
+      return n;
+    }
+    function p2pStop() {
+      clearInterval(p2pTimer); p2pTimer = null;
+      p2pConns.forEach(c => { try { c.close(); } catch (e) {} });
+      p2pConns.clear();
+      if (p2pPeer) { try { p2pPeer.destroy(); } catch (e) {} p2pPeer = null; }
+    }
     function mqttBuildFacade() {
       return {
-        get connected() { return mqttLinks.some(l => l.client.connected); },
+        get connected() { return mqttLinks.some(l => l.client.connected) || p2pOpenCount() > 0; },
         publish(topic, payload, opts, cb) {
           let sent = false;
           mqttLinks.forEach(l => {
             if (!l.client.connected) return;
             try { l.client.publish(topic, payload, opts || {}); sent = true; } catch (e) { console.error('MQTT publish kļūda:', e); }
           });
+          p2pConns.forEach(c => {
+            if (!c.open) return;
+            try { c.send({ t: topic, p: String(payload) }); sent = true; } catch (e) { console.error('P2P send kļūda:', e); }
+          });
           if (typeof cb === 'function') cb(sent ? null : new Error('Nav savienojuma'));
           return sent;
         },
-        end() { mqttLinks.forEach(l => { try { l.client.end(true); } catch (e) {} }); mqttLinks = []; }
+        end() { mqttLinks.forEach(l => { try { l.client.end(true); } catch (e) {} }); mqttLinks = []; p2pStop(); }
       };
     }
-    let mqttKey = '';
-    function mqttOpenAll({ clientPrefix, topics, onMessage, onStatus, onSubscribed }) {
+    // Wi-Fi P2P: viena lapa ("host") gaida, otra ("guest") pieslēdzas. Signalizācija iet pa 443 portu, pati datu plūsma – tieši starp ierīcēm.
+    function p2pStart(role, room, gen, topics, onMessage, onStatus, onOpen) {
+      p2pStop();
+      if (typeof Peer === 'undefined' || !room) return;
+      const hostId = 'ean2026-' + String(room).replace(/[^a-zA-Z0-9-_]/g, '-');
+      const alive = () => gen === mqttGen;
+      const attach = conn => {
+        conn.on('open', () => {
+          if (!alive()) { try { conn.close(); } catch (e) {} return; }
+          p2pConns.add(conn); onStatus(); onOpen();
+        });
+        conn.on('data', d => {
+          if (!alive() || !d || typeof d.t !== 'string' || !topics.includes(d.t)) return;
+          const msg = String(d.p);
+          if (mqttIsDuplicate(d.t, msg)) return;
+          onMessage(d.t, msg);
+        });
+        const drop = () => { p2pConns.delete(conn); if (alive()) onStatus(); };
+        conn.on('close', drop); conn.on('error', drop);
+      };
+      const dial = () => {
+        const peer = p2pPeer;
+        if (!alive() || !peer || peer.destroyed || !peer.open || p2pOpenCount() > 0) return;
+        try { attach(peer.connect(hostId, { reliable: true })); } catch (e) {}
+      };
+      const build = () => {
+        if (!alive()) return;
+        try {
+          const peer = role === 'host' ? new Peer(hostId, { debug: 0 }) : new Peer({ debug: 0 });
+          p2pPeer = peer;
+          peer.on('connection', attach);
+          peer.on('open', () => { if (role === 'guest') dial(); });
+          peer.on('disconnected', () => { if (alive() && p2pPeer === peer && !peer.destroyed) { try { peer.reconnect(); } catch (e) {} } });
+          peer.on('error', err => {
+            const type = err && err.type;
+            console.warn('P2P kļūda:', type);
+            if (type === 'peer-unavailable') return;
+            if (alive() && p2pPeer === peer) {
+              try { peer.destroy(); } catch (e) {}
+              p2pPeer = null;
+              setTimeout(build, 10000);
+            }
+          });
+        } catch (e) { console.warn('P2P starta kļūda:', e); }
+      };
+      build();
+      if (role === 'guest') p2pTimer = setInterval(dial, 6000);
+    }
+    function mqttOpenAll({ clientPrefix, topics, onMessage, onStatus, onSubscribed, p2pRole, p2pRoom }) {
       const key = topics.join(',');
-      if (key === mqttKey && mqttLinks.length && mqttLinks.some(l => !l.client.disconnected)) { onStatus(); return; }
+      if (key === mqttKey && (p2pPeer || mqttLinks.some(l => !l.client.disconnected))) { onStatus(); return; }
       mqttKey = key;
       const gen = ++mqttGen;
       mqttLinks.forEach(l => { try { l.client.end(true); } catch (e) {} });
       mqttLinks = [];
       mqttClient = mqttBuildFacade();
-      MQTT_BROKERS.forEach((url, index) => {
+      if (typeof mqtt !== 'undefined') MQTT_BROKERS.forEach((url, index) => {
         const client = mqtt.connect(url, {
           clientId: `${clientPrefix}_${Math.random().toString(36).substring(2, 10)}`,
           clean: true, keepalive: 30, connectTimeout: 8000, reconnectPeriod: 3000, resubscribe: false
@@ -949,13 +1017,14 @@
         client.on('close', () => { if (gen === mqttGen) onStatus(); });
         client.on('offline', () => { if (gen === mqttGen) onStatus(); });
       });
+      if (p2pRole) p2pStart(p2pRole, p2pRoom, gen, topics, onMessage, onStatus, () => { if (onSubscribed) onSubscribed('p2p'); });
       onStatus();
     }
 
     function initMqtt() {
       const roomId = getRoomId();
       const deviceId = getDeviceId();
-      if (typeof mqtt === 'undefined') { updateConnectionStatusUI(false); return; }
+      if (typeof mqtt === 'undefined' && typeof Peer === 'undefined') { updateConnectionStatusUI(false); return; }
       const topics = [
         `ean2026/${roomId}/catalog`, `ean2026/${roomId}/ack/${deviceId}`,
         `ean2026/${roomId}/auth/${deviceId}`, `ean2026/${roomId}/auth_revoke`,
@@ -967,6 +1036,7 @@
       let firstSyncDone = false;
       mqttOpenAll({
         clientPrefix: 'ean_mob',
+        p2pRole: 'guest', p2pRoom: roomId,
         topics,
         onStatus: () => updateConnectionStatusUI(mqttClient && mqttClient.connected),
         onSubscribed: () => {
