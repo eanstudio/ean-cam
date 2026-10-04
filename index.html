@@ -67,7 +67,7 @@
     </div>
   </header>
 
-  <!-- Režīmi: Viesa režīmā tiek rādīta TIKAI pārbaude! -->
+  <!-- Režīmi: Viesa režīmā redz TIKAI pārbaudi! -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div id="modesContainer" class="p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
       <div id="fullModesGrid" class="hidden grid grid-cols-4 gap-1">
@@ -85,7 +85,7 @@
         </button>
       </div>
 
-      <!-- Viesa režīma poga: redzama, kamēr nav atļauts -->
+      <!-- Viesa režīma paziņojums, kamēr administrators nav apstiprinājis -->
       <div id="guestModeSingleBar" class="flex items-center justify-between px-3 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-xl">
         <span class="text-xs font-bold font-mono text-amber-400 flex items-center gap-1.5">
           <span>🔍</span> <span>Cenu pārbaude (Gaida atļauju)</span>
@@ -164,7 +164,7 @@
       <div>
         <h3 class="text-base font-bold text-white uppercase font-mono tracking-tight">Gaida apstiprinājumu</h3>
         <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
-          Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat pārbaudīt cenas bez saglabāšanas.
+          Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat veikt cenu pārbaudi bez saglabāšanas.
         </p>
       </div>
       <div class="p-3 bg-black/50 rounded-2xl border border-white/10 text-xs font-mono space-y-1">
@@ -250,7 +250,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Preces kartīte -->
+  <!-- MODĀLIS: Preces kartīte un daudzuma/cenas ievade -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
@@ -465,13 +465,11 @@
       const guestBar = document.getElementById('guestModeSingleBar');
 
       if (!isDeviceApproved) {
-        // Paslēpjam visas 3 darba sadaļas
         fullGrid?.classList.add('hidden');
         guestBar?.classList.remove('hidden');
         appMode = 'pricecheck';
         localStorage.setItem('ean_app_mode', 'pricecheck');
       } else {
-        // Rādām visas sadaļas
         guestBar?.classList.add('hidden');
         fullGrid?.classList.remove('hidden');
         if (appMode === 'pricecheck') {
@@ -834,11 +832,22 @@
       return localStorage.getItem('ean_room_id') || 'veikals-1';
     }
 
+    function getStoreDisplayName() {
+      const hash = window.location.hash.replace('#', '');
+      const params = new URLSearchParams(hash);
+      const storeFromHash = params.get('store');
+      if (storeFromHash) {
+        localStorage.setItem('ean_store_display_name', storeFromHash);
+        return storeFromHash;
+      }
+      return localStorage.getItem('ean_store_display_name') || getRoomId().split('-')[0] || 'Veikals';
+    }
+
     function updateDeviceHeaderUI() {
       const workerEl = document.getElementById('displayWorkerName');
       if (workerEl) workerEl.innerText = getDeviceId();
       const roomEl = document.getElementById('currentRoomText');
-      if (roomEl) roomEl.innerText = `Telpa: ${getRoomId()}`;
+      if (roomEl) roomEl.innerText = `Veikals: ${getStoreDisplayName()}`;
     }
 
     function updateConnectionStatusUI(connected) {
@@ -893,7 +902,6 @@
         try {
           const payload = JSON.parse(msg.toString());
 
-          // Sesijas anulēšana no datora
           if (topic.endsWith('/auth_revoke')) {
             isDeviceApproved = false;
             sessionStorage.removeItem('ean_device_approved');
@@ -935,7 +943,6 @@
       mqttClient.on('error', () => updateConnectionStatusUI(false));
     }
 
-    // Sinhronizācija notiek TIKAI un vienīgi tad, ja ierīce ir apstiprināta!
     async function syncOfflineQueue() {
       if (isSyncingQueue || !isDeviceApproved) return;
       const all = await getAllScansFromDb();
@@ -1111,7 +1118,6 @@
         : "w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
-    // Skenēšanas apstrāde
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
@@ -1124,7 +1130,7 @@
       const name = item ? item.nosaukums : 'Nezināma prece';
       const basePriceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
-      // JA NAV APSTIPRINĀTS -> TIKAI CENU PĀRBAUDE! NEKĀDAS SAGLABĀŠANAS!
+      // JA IERĪCE NAV APSTIPRINĀTA -> TIKAI CENU PĀRBAUDE! NEKĀDAS SAGLABĀŠANAS!
       if (!isDeviceApproved || appMode === 'pricecheck') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1518,6 +1524,13 @@
         synced: false
       };
 
+      if (appMode === 'repricing') {
+        const existingRepriceIndex = recentScansMemory.findIndex(s => s.ean === activeScanData.ean && s.mode === 'repricing');
+        if (existingRepriceIndex !== -1) {
+          recentScansMemory.splice(existingRepriceIndex, 1);
+        }
+      }
+
       recentScansMemory.unshift(scanRecord);
       if (recentScansMemory.length > 20) recentScansMemory.pop();
       renderRecentScans();
@@ -1758,7 +1771,7 @@
     async function openSettingsModal() {
       await stopCameraSafely();
       document.getElementById('settingDeviceId').value = getDeviceId();
-      document.getElementById('settingRoomId').value = getRoomId();
+      document.getElementById('settingRoomId').value = getStoreDisplayName();
       document.getElementById('settingSoundToggle').checked = isSoundEnabled;
       document.getElementById('settingPricePromptToggle').checked = isPricePromptEnabled;
       populateCameraDropdown();
@@ -1776,8 +1789,7 @@
       const room = document.getElementById('settingRoomId').value.trim();
       if (dev) localStorage.setItem('ean_device_id', dev);
       if (room) {
-        localStorage.setItem('ean_room_id', room);
-        window.location.hash = `#room=${room}`;
+        localStorage.setItem('ean_store_display_name', room);
       }
       updateDeviceHeaderUI();
       closeSettingsModal();
@@ -1786,7 +1798,7 @@
 
     function manualSync() {
       if (!isDeviceApproved) {
-        alert("Sinhronizācija nav atļauta, kamēr administrators nav apstiprinājis ierīci!");
+        alert("Sinhronizācija nav atļauta viesa režīmā!");
         return;
       }
       syncOfflineQueue();
@@ -1816,7 +1828,6 @@
       recentScansMemory = allScans.slice(0, 20);
       renderRecentScans();
 
-      // Pārbaudām autorizāciju un nosakām režīmu redzamību
       checkWorkerSessionOnStartup();
       updateModesVisibility();
       resetActivityTimer();
