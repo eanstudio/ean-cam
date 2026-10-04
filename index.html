@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.8</title>
+  <title>EAN Skeneris Pro V2.9</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -882,9 +882,35 @@
 
     let isSyncingQueue = false;
 
-    function initMqtt() {
+    async function ensureMqttLibrary() {
+      if (window.mqtt && typeof window.mqtt.connect === 'function') return true;
+      const sources = [
+        'https://cdn.jsdelivr.net/npm/mqtt@5.3.5/dist/mqtt.min.js',
+        'https://unpkg.com/mqtt@5.3.5/dist/mqtt.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.5/mqtt.min.js'
+      ];
+      for (const src of sources) {
+        try {
+          await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src; script.async = true;
+            script.onload = () => (window.mqtt ? resolve() : reject(new Error('MQTT nav ielādēts')));
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+          if (window.mqtt) return true;
+        } catch (e) {}
+      }
+      return false;
+    }
+    async function initMqtt() {
       const roomId = getRoomId();
       const deviceId = getDeviceId();
+      updateConnectionStatusUI(false);
+      if (!await ensureMqttLibrary()) {
+        alert('Neizdevās ielādēt MQTT savienojuma moduli. Pārbaudiet internetu un pārlādējiet lapu.');
+        return;
+      }
       const brokerUrl = 'wss://broker.hivemq.com:8884/mqtt';
 
       if (mqttClient) {
@@ -950,6 +976,7 @@
         } catch (e) {}
       });
 
+      mqttClient.on('reconnect', () => updateConnectionStatusUI(false));
       mqttClient.on('offline', () => updateConnectionStatusUI(false));
       mqttClient.on('error', () => updateConnectionStatusUI(false));
     }
