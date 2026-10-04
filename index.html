@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro</title>
+  <title>EAN Skeneris Pro V2.6</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -153,6 +153,13 @@
     </div>
   </main>
 
+  <div id="lockedAccessModal" class="hidden fixed inset-0 z-[60] bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 text-center space-y-4 shadow-2xl">
+      <div class="text-4xl">🔒</div>
+      <div><h3 class="text-base font-bold text-white">Sadaļa ir bloķēta</h3><p class="text-xs text-slate-300 mt-2">Lai izmantotu Inventūru, Cenu zīmes vai Pārcenošanu, nepieciešama administratora atļauja.</p></div>
+      <div class="flex gap-2"><button type="button" onclick="closeLockedAccessModal()" class="w-1/3 py-2.5 bg-white/10 text-slate-300 rounded-xl text-xs font-bold">Atcelt</button><button type="button" onclick="requestPermissionFromLockedModal()" class="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold">Pieprasīt atļauju</button></div>
+    </div>
+  </div>
   <!-- MODĀLIS: Gaida apstiprinājumu -->
   <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
@@ -413,6 +420,8 @@
 
     let currentScanPhotos = [];
     let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
+    let isAuthRequiredByAdmin = localStorage.getItem('ean_auth_required') !== 'false';
+    let pingInterval = null;
     let authRetryInterval = null;
 
     let idleTimer = null;
@@ -451,7 +460,7 @@
       const btnLbl = document.getElementById('modeBtn_labels');
       const btnRep = document.getElementById('modeBtn_repricing');
 
-      if (!isDeviceApproved) {
+      if (isAuthRequiredByAdmin && !isDeviceApproved) {
         // Bloķējam vizuāli visas 3 sadaļas
         lockInv?.classList.remove('hidden');
         lockLbl?.classList.remove('hidden');
@@ -478,10 +487,10 @@
     }
 
     function setAppMode(mode) {
-      if (!isDeviceApproved && mode !== 'pricecheck') {
+      if (isAuthRequiredByAdmin && !isDeviceApproved && mode !== 'pricecheck') {
         playAudioTone('warning');
         triggerHaptic('warning');
-        alert("Pieeja liegta!\n\nGaidiet, kamēr administrators datorā apstiprina jūsu ierīci.\nŠobrīd jums ir atļauta tikai cenu pārbaude.");
+        document.getElementById('lockedAccessModal').classList.remove('hidden');
         return;
       }
 
@@ -516,6 +525,26 @@
       }
     }
 
+    function closeLockedAccessModal() { document.getElementById('lockedAccessModal').classList.add('hidden'); }
+    function requestPermissionFromLockedModal() {
+      closeLockedAccessModal();
+      isDeviceApproved = false;
+      requestAuthorizationFromAdmin();
+    }
+    function applyAdminAuthSetting(required) {
+      isAuthRequiredByAdmin = required;
+      localStorage.setItem('ean_auth_required', required ? 'true' : 'false');
+      if (!required) {
+        isDeviceApproved = true;
+        sessionStorage.setItem('ean_device_approved', 'true');
+        document.getElementById('pendingApprovalModal').classList.add('hidden');
+        clearInterval(authRetryInterval);
+      } else if (!localStorage.getItem('ean_device_approved_time')) {
+        isDeviceApproved = false;
+        sessionStorage.removeItem('ean_device_approved');
+      }
+      updateModesVisibility();
+    }
     function continueInGuestMode() {
       document.getElementById('pendingApprovalModal').classList.add('hidden');
       updateModesVisibility();
@@ -671,7 +700,7 @@
     }
 
     function isAnyModalOpen() {
-      const modalIds = ['pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal'];
+      const modalIds = ['lockedAccessModal', 'pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal'];
       return modalIds.some(id => {
         const el = document.getElementById(id);
         return el && !el.classList.contains('hidden');
@@ -884,10 +913,18 @@
           `ean2026/${roomId}/ack/${deviceId}`,
           `ean2026/${roomId}/auth/${deviceId}`,
           `ean2026/${roomId}/auth_revoke`,
-          `ean2026/${roomId}/price_update`
+          `ean2026/${roomId}/price_update`,
+          `ean2026/${roomId}/auth_setting`
         ]);
 
-        mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, time: Date.now() }));
+        const sendHeartbeat = () => {
+          if (mqttClient && mqttClient.connected) {
+            mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, workerName: deviceId, approved: isDeviceApproved, time: Date.now() }));
+          }
+        };
+        sendHeartbeat();
+        clearInterval(pingInterval);
+        pingInterval = setInterval(sendHeartbeat, 15000);
         if (isDeviceApproved) {
           syncOfflineQueue();
         }
@@ -898,6 +935,10 @@
         try {
           const payload = JSON.parse(msg.toString());
 
+          if (topic.endsWith('/auth_setting')) {
+            applyAdminAuthSetting(payload.required !== false);
+            return;
+          }
           if (topic.endsWith('/auth_revoke')) {
             isDeviceApproved = false;
             sessionStorage.removeItem('ean_device_approved');
@@ -910,7 +951,10 @@
 
           if (topic.includes(`/auth/${deviceId}`)) {
             if (payload.approved === true) onAdminAuthorizationGranted();
-            else if (payload.approved === false) onAdminAuthorizationRejected();
+            else if (payload.approved === false) {
+              onAdminAuthorizationRejected();
+              if (payload.revoked) alert("Administrators pārtrauca tieši jūsu sesiju.");
+            }
           }
 
           if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
