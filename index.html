@@ -140,7 +140,7 @@
 
     <div class="flex justify-between items-center px-1 text-xs font-mono text-slate-400">
       <span id="catalogStatsText">Bāze: 0 preces</span>
-      <span id="currentRoomText">Telpa: ...</span>
+      <span id="currentRoomText">Veikals: ...</span>
     </div>
 
     <!-- Saraksts -->
@@ -902,6 +902,7 @@
         try {
           const payload = JSON.parse(msg.toString());
 
+          // Sesijas anulēšana no datora
           if (topic.endsWith('/auth_revoke')) {
             isDeviceApproved = false;
             sessionStorage.removeItem('ean_device_approved');
@@ -1118,6 +1119,7 @@
         : "w-12 h-12 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
+    // Skenēšanas apstrāde
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
