@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.11</title>
+  <title>EAN Skeneris Pro V2.12</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -47,11 +47,10 @@
 </head>
 <body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
 
-  <!-- Augšējā josla: TIKAI VĀRDS UN PULSĒJOŠAIS PUNKTS -->
+  <!-- Augšējā josla -->
   <header class="px-3.5 py-2.5 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2.5">
-      <!-- Pulsējošs punkts: zaļš pie tīkla, sarkans bez tīkla -->
-      <div id="mqttStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0 transition-colors"></div>
+      <div id="mqttStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0 transition-colors" title="Nav savienojuma"></div>
       <button type="button" onclick="promptWorkerChange()" class="text-left group flex items-center gap-1.5">
         <span class="text-xs text-slate-400 font-mono">👤</span>
         <span id="displayWorkerName" class="text-sm sm:text-base font-bold font-mono text-white group-hover:text-emerald-400 underline decoration-dashed decoration-slate-500 underline-offset-4 truncate max-w-[140px]">Darbinieks</span>
@@ -68,7 +67,7 @@
     </div>
   </header>
 
-  <!-- Režīmi ar skaidrām atslēgas ikonām 🔒 kamēr nav atļauts -->
+  <!-- Režīmi -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div id="modesContainer" class="p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
       <div class="grid grid-cols-4 gap-1">
@@ -405,7 +404,17 @@
     let mqttClient = null;
     let activeBrokerIndex = 0;
     let mqttReconnectTimer = null;
-    const MQTT_BROKERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'];
+    let watchdogTimer = null;
+    let lastNetworkActivity = Date.now();
+
+    // 4 LĪMEŅU BROKERU REZERVES BASEINS
+    const MQTT_BROKERS = [
+      { name: 'HiveMQ (Primārais)', url: 'wss://broker.hivemq.com:8884/mqtt' },
+      { name: 'EMQX (Rezerves 1)', url: 'wss://broker.emqx.io:8084/mqtt' },
+      { name: 'Mosquitto (Rezerves 2)', url: 'wss://test.mosquitto.org:8081/mqtt' },
+      { name: 'MQTTHQ (Rezerves 3)', url: 'wss://public.mqtthq.com:8084/mqtt' }
+    ];
+
     let isTorchOn = false;
     let cameraTrack = null;
     let localCatalog = new Map();
@@ -447,7 +456,6 @@
     let isSoundEnabled = localStorage.getItem('ean_sound_enabled') !== 'false';
     let isPricePromptEnabled = localStorage.getItem('ean_price_prompt') === 'true';
 
-    // 1. REŽĪMU REDZAMĪBA UN VIZUĀLĀ BLOĶĒŠANA
     function updateModesVisibility() {
       const lockInv = document.getElementById('lockIcon_inventory');
       const lockLbl = document.getElementById('lockIcon_labels');
@@ -457,7 +465,6 @@
       const btnRep = document.getElementById('modeBtn_repricing');
 
       if (isAuthRequiredByAdmin && !isDeviceApproved) {
-        // Bloķējam vizuāli visas 3 sadaļas
         lockInv?.classList.remove('hidden');
         lockLbl?.classList.remove('hidden');
         lockRep?.classList.remove('hidden');
@@ -467,7 +474,6 @@
         appMode = 'pricecheck';
         localStorage.setItem('ean_app_mode', 'pricecheck');
       } else {
-        // Noņemam atslēgas, ja klients ir apstiprināts
         lockInv?.classList.add('hidden');
         lockLbl?.classList.add('hidden');
         lockRep?.classList.add('hidden');
@@ -627,6 +633,7 @@
       clearInterval(authRetryInterval);
       authRetryInterval = setInterval(() => { if (!isDeviceApproved) sendAuthRequestMqtt(); }, 3000);
     }
+
     function cancelAuthAndChangeWorker() {
       clearInterval(authRetryInterval);
       document.getElementById('pendingApprovalModal').classList.add('hidden');
@@ -872,90 +879,184 @@
       if (roomEl) roomEl.innerText = `Veikals: ${getStoreDisplayName()}`;
     }
 
-    // TĪRS INDIKATORS: PULSĒJOŠS ZAĻŠ (KAD IR TĪKLS), SARKANS (KAD NAV)
     function updateConnectionStatusUI(connected) {
       const dot = document.getElementById('mqttStatusDot');
       if (!dot) return;
       if (connected) {
         dot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-pulse-emerald shrink-0";
+        dot.title = `Savienots: ${MQTT_BROKERS[activeBrokerIndex]?.name || 'Brokeris'}`;
       } else {
         dot.className = "w-3 h-3 rounded-full bg-red-500 shrink-0";
+        dot.title = "Nav savienojuma ar MQTT";
       }
     }
 
     let isSyncingQueue = false;
 
+    // HIBRĪDAIS WIFI / 5G DZINĒJS AR INTELIĢENTO REZERVI
     function initMqtt(preferredIndex = activeBrokerIndex) {
       const roomId = getRoomId();
       const deviceId = getDeviceId();
       if (typeof mqtt === 'undefined') { updateConnectionStatusUI(false); return; }
+
       clearTimeout(mqttReconnectTimer);
+      clearInterval(watchdogTimer);
+
       activeBrokerIndex = preferredIndex % MQTT_BROKERS.length;
-      const brokerUrl = MQTT_BROKERS[activeBrokerIndex];
-      if (mqttClient) { try { mqttClient.end(true); } catch (e) {} }
+      const currentBroker = MQTT_BROKERS[activeBrokerIndex];
+
+      if (mqttClient) {
+        try { mqttClient.end(true); } catch (e) {}
+      }
       updateConnectionStatusUI(false);
-      const client = mqtt.connect(brokerUrl, {
-        clientId: `ean_mob_${Math.random().toString(36).substring(2, 10)}`,
-        clean: true, connectTimeout: 7000, reconnectPeriod: 0
+
+      const client = mqtt.connect(currentBroker.url, {
+        clientId: `ean_mob_${Math.random().toString(36).substring(2, 9)}`,
+        clean: true,
+        connectTimeout: 4500,
+        keepalive: 15,
+        reconnectPeriod: 0
       });
       mqttClient = client;
+
       let connectedOnce = false;
       let switched = false;
+
       const switchBroker = () => {
         if (switched || mqttClient !== client) return;
         switched = true;
         updateConnectionStatusUI(false);
         try { client.end(true); } catch (e) {}
-        mqttReconnectTimer = setTimeout(() => initMqtt((activeBrokerIndex + 1) % MQTT_BROKERS.length), 900);
+        const nextIndex = (activeBrokerIndex + 1) % MQTT_BROKERS.length;
+        mqttReconnectTimer = setTimeout(() => initMqtt(nextIndex), 700);
       };
+
       client.on('connect', () => {
         connectedOnce = true;
+        lastNetworkActivity = Date.now();
+        updateConnectionStatusUI(true);
+
         const topics = [
-          `ean2026/${roomId}/catalog`, `ean2026/${roomId}/ack/${deviceId}`,
-          `ean2026/${roomId}/auth/${deviceId}`, `ean2026/${roomId}/auth_revoke`,
-          `ean2026/${roomId}/price_update`, `ean2026/${roomId}/auth_setting`
+          `ean2026/${roomId}/catalog`,
+          `ean2026/${roomId}/ack/${deviceId}`,
+          `ean2026/${roomId}/auth/${deviceId}`,
+          `ean2026/${roomId}/auth_revoke`,
+          `ean2026/${roomId}/price_update`,
+          `ean2026/${roomId}/auth_setting`
         ];
+
         client.subscribe(topics, err => {
           if (err) { switchBroker(); return; }
-          updateConnectionStatusUI(true);
+
           const heartbeat = () => {
-            if (mqttClient === client && client.connected) client.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, workerName: deviceId, approved: isDeviceApproved, broker: activeBrokerIndex, time: Date.now() }));
+            if (mqttClient === client && client.connected) {
+              client.publish(`ean2026/${roomId}/ping`, JSON.stringify({
+                deviceId,
+                workerName: deviceId,
+                approved: isDeviceApproved,
+                broker: activeBrokerIndex,
+                time: Date.now()
+              }));
+            }
           };
-          heartbeat(); clearInterval(pingInterval); pingInterval = setInterval(heartbeat, 15000);
-          if (isDeviceApproved) syncOfflineQueue(); else sendAuthRequestMqtt();
+
+          heartbeat();
+          clearInterval(pingInterval);
+          pingInterval = setInterval(heartbeat, 10000);
+
+          if (isDeviceApproved) {
+            syncOfflineQueue();
+          } else {
+            sendAuthRequestMqtt();
+          }
         });
       });
+
       client.on('message', async (topic, msg) => {
+        lastNetworkActivity = Date.now();
         try {
           const payload = JSON.parse(msg.toString());
           if (topic.endsWith('/auth_setting')) {
             isAuthRequiredByAdmin = payload.required !== false;
             localStorage.setItem('ean_auth_required', isAuthRequiredByAdmin ? 'true' : 'false');
-            if (!isAuthRequiredByAdmin) { isDeviceApproved = true; sessionStorage.setItem('ean_device_approved', 'true'); }
-            else if (!localStorage.getItem('ean_device_approved_time')) { isDeviceApproved = false; sessionStorage.removeItem('ean_device_approved'); }
-            updateModesVisibility(); return;
+            if (!isAuthRequiredByAdmin) {
+              isDeviceApproved = true;
+              sessionStorage.setItem('ean_device_approved', 'true');
+            } else if (!localStorage.getItem('ean_device_approved_time')) {
+              isDeviceApproved = false;
+              sessionStorage.removeItem('ean_device_approved');
+            }
+            updateModesVisibility();
+            return;
           }
           if (topic.endsWith('/auth_revoke')) {
-            isDeviceApproved = false; sessionStorage.removeItem('ean_device_approved');
-            sessionStorage.removeItem('ean_worker_session_active'); localStorage.removeItem('ean_device_approved_time');
-            updateModesVisibility(); alert('Administrators datorā ir pārtraucis sesiju!'); return;
+            isDeviceApproved = false;
+            sessionStorage.removeItem('ean_device_approved');
+            sessionStorage.removeItem('ean_worker_session_active');
+            localStorage.removeItem('ean_device_approved_time');
+            updateModesVisibility();
+            alert('Administrators datorā ir pārtraucis sesiju!');
+            return;
           }
           if (topic.includes(`/auth/${deviceId}`)) {
             if (payload.approved === true) onAdminAuthorizationGranted();
             else if (payload.approved === false) onAdminAuthorizationRejected();
             return;
           }
-          if (topic.includes(`/ack/${deviceId}`) && payload.scanId) { markScanSyncedInDb(payload.scanId); return; }
-          if (topic.endsWith('/catalog') && Array.isArray(payload.items)) { await saveCatalogBatchToDb(payload.items); return; }
+          if (topic.includes(`/ack/${deviceId}`) && payload.scanId) {
+            markScanSyncedInDb(payload.scanId);
+            const mem = recentScansMemory.find(s => s.id === payload.scanId);
+            if (mem) { mem.synced = true; renderRecentScans(); }
+            updateSyncQueueBadge();
+            return;
+          }
+          if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
+            await saveCatalogBatchToDb(payload.items);
+            return;
+          }
           if (topic.endsWith('/price_update')) {
             const item = localCatalog.get(String(payload.ean));
-            if (item) { item.cena = payload.price; await saveCatalogBatchToDb([item]); }
+            if (item) {
+              item.cena = payload.price;
+              await saveCatalogBatchToDb([item]);
+            }
           }
         } catch (e) { console.error('MQTT ziņas kļūda:', e); }
       });
+
       client.on('error', switchBroker);
-      client.on('close', () => { updateConnectionStatusUI(false); if (!connectedOnce) switchBroker(); else if (!switched && mqttClient === client) mqttReconnectTimer = setTimeout(() => initMqtt(activeBrokerIndex), 2500); });
+      client.on('close', () => {
+        updateConnectionStatusUI(false);
+        if (!connectedOnce) switchBroker();
+        else if (!switched && mqttClient === client) {
+          mqttReconnectTimer = setTimeout(() => initMqtt(activeBrokerIndex), 2000);
+        }
+      });
+
+      // Watchdog: pamana un iznīcina zombiju TCP ligzdas pēc Wi-Fi/5G lēcieniem
+      watchdogTimer = setInterval(() => {
+        if (mqttClient === client && client.connected) {
+          const silentMs = Date.now() - lastNetworkActivity;
+          if (silentMs > 25000) {
+            switchBroker();
+          }
+        }
+      }, 8000);
     }
+
+    // TĪKLA HANDOVER NOTIKUMI: WIFI <-> 5G
+    window.addEventListener('online', () => {
+      showScanToast('Tīkls atjaunots', 'WiFi / 5G aktīvs', '0.00', null);
+      initMqtt(activeBrokerIndex);
+      if (isDeviceApproved) {
+        setTimeout(syncOfflineQueue, 600);
+      }
+    });
+
+    window.addEventListener('offline', () => {
+      updateConnectionStatusUI(false);
+    });
+
     async function syncOfflineQueue() {
       if (isSyncingQueue || !isDeviceApproved) return;
       const all = await getAllScansFromDb();
@@ -977,7 +1078,7 @@
         } else {
           mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(item));
         }
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise(r => setTimeout(r, 120));
       }
       isSyncingQueue = false;
       updateSyncQueueBadge();
@@ -1131,7 +1232,6 @@
         : "w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
-    // SKENĒŠANAS APSTRĀDE AR CENU ZĪMJU DUBLIKĀTU BRĪDINĀJUMU
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
@@ -1155,7 +1255,6 @@
         return;
       }
 
-      // CENU ZĪMES: PĀRBAUDĀM DUBLIKĀTUS!
       if (appMode === 'labels') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1181,7 +1280,7 @@
           name: name,
           basePrice: basePriceEur,
           price: basePriceEur,
-          qty: 1, // DAUDZUMS VIENMĒR 1!
+          qty: 1,
           mode: 'labels',
           timestamp: Date.now(),
           synced: false
