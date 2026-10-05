@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.14</title>
+  <title>EAN Skeneris Pro V2.15</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -54,11 +54,9 @@
   <!-- Augšējā josla: TIKAI VĀRDS UN PULSĒJOŠAIS PUNKTS -->
   <header class="px-3.5 py-2.5 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2.5">
-      <!-- Pulsējošs punkts: zaļš pie tīkla, sarkans bez tīkla -->
-      <div id="mqttStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0 transition-colors"></div>
-      <button type="button" onclick="promptWorkerChange()" class="text-left group flex items-center gap-1.5">
-        <span class="text-xs text-slate-400 font-mono">👤</span>
-        <span id="displayWorkerName" class="text-sm sm:text-base font-bold font-mono text-white group-hover:text-emerald-400 underline decoration-dashed decoration-slate-500 underline-offset-4 truncate max-w-[140px]">Darbinieks</span>
+      <button type="button" onclick="openDiagnosticModal()" class="flex items-center gap-2 p-1 rounded-xl active:scale-95 transition" title="Pārbaudīt savienojumu">
+        <div id="mqttStatusDot" class="w-3.5 h-3.5 rounded-full bg-red-500 shrink-0 transition-colors"></div>
+        <span id="displayWorkerName" class="text-sm sm:text-base font-bold font-mono text-white underline decoration-dashed decoration-slate-500 underline-offset-4 truncate max-w-[140px]">Darbinieks</span>
       </button>
     </div>
 
@@ -68,23 +66,23 @@
       </div>
       <button type="button" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Pārslēgt kameru">📷</button>
       <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Zibspuldze">🔦</button>
-      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">⚙️</button>
+      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">⚙️️</button>
     </div>
   </header>
 
-  <!-- Režīmi ar skaidrām atslēgas ikonām 🔒 kamēr nav atļauts -->
+  <!-- Režīmi ar atslēgas ikonām 🔒 kamēr nav atļauts -->
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div id="modesContainer" class="p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
       <div class="grid grid-cols-4 gap-1">
-        <button type="button" id="modeBtn_inventory" onclick="setAppMode('inventory')" class="py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1">
+        <button type="button" id="modeBtn_inventory" onclick="handleModeClick('inventory')" class="py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1">
           <span id="lockIcon_inventory" class="hidden text-[10px]">🔒</span>
           <span>Inventūra</span>
         </button>
-        <button type="button" id="modeBtn_labels" onclick="setAppMode('labels')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
+        <button type="button" id="modeBtn_labels" onclick="handleModeClick('labels')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
           <span id="lockIcon_labels" class="hidden text-[10px]">🔒</span>
           <span>Cenu zīmes</span>
         </button>
-        <button type="button" id="modeBtn_repricing" onclick="setAppMode('repricing')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
+        <button type="button" id="modeBtn_repricing" onclick="handleModeClick('repricing')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
           <span id="lockIcon_repricing" class="hidden text-[10px]">🔒</span>
           <span>Pārcenošana</span>
         </button>
@@ -157,7 +155,33 @@
     </div>
   </main>
 
-  <!-- MODĀLIS: Gaida apstiprinājumu -->
+  <!-- Diagnostikas modālis -->
+  <div id="diagnosticModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-5 space-y-3.5 shadow-2xl text-center">
+      <div class="flex items-center justify-between pb-1 border-b border-white/10">
+        <h3 class="text-xs font-bold text-white uppercase font-mono">Savienojuma statuss</h3>
+        <button type="button" onclick="closeDiagnosticModal()" class="text-slate-400 p-1 font-bold">✕</button>
+      </div>
+      <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1 text-xs font-mono text-left">
+        <p class="text-slate-400">Veikals: <strong class="text-white" id="diagStoreName">...</strong></p>
+        <p class="text-slate-400">Darbinieks: <strong class="text-white" id="diagWorkerName">...</strong></p>
+        <p class="text-slate-400">Atļaujas statuss: <strong id="diagAuthStatus" class="text-amber-400">Pārbauda...</strong></p>
+      </div>
+      <div class="space-y-2 pt-1">
+        <button type="button" onclick="sendAuthRequestMqtt(); alert('Pieprasījums nosūtīts datoram! 📡'); closeDiagnosticModal();" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition shadow-xs">
+          📡 Pieprasīt atļauju no administratora
+        </button>
+        <button type="button" onclick="initMqtt(); alert('Savienojums pārstartēts 🔄'); closeDiagnosticModal();" class="w-full py-2.5 bg-white/10 hover:bg-white/15 text-slate-300 font-bold rounded-xl text-xs transition">
+          🔄 Pārbaudīt / atjaunot sakarus
+        </button>
+        <button type="button" onclick="promptWorkerChange(); closeDiagnosticModal();" class="w-full py-2 bg-red-500/20 text-red-400 font-bold rounded-xl text-xs transition">
+          Mainīt darbinieka vārdu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gaida apstiprinājumu -->
   <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-3xl animate-pulse">⏳</div>
@@ -183,7 +207,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Pieteikšanās -->
+  <!-- Pieteikšanās -->
   <div id="workerLoginModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-3xl shadow-xs">👤</div>
@@ -200,7 +224,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Preču meklētājs bāzē -->
+  <!-- Kataloga meklētājs -->
   <div id="catalogSearchModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col p-3 sm:p-5">
     <div class="w-full max-w-lg mx-auto flex-1 flex flex-col bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 overflow-hidden shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -219,7 +243,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Koda ievade ar roku -->
+  <!-- Kods ar roku -->
   <div id="manualEanModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
@@ -250,7 +274,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Preces kartīte -->
+  <!-- Preces kartīte un daudzums -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
@@ -315,7 +339,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Labot ierakstu -->
+  <!-- Labot ierakstu -->
   <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
@@ -357,7 +381,7 @@
     </div>
   </div>
 
-  <!-- MODĀLIS: Iestatījumi -->
+  <!-- Iestatījumi -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -421,7 +445,7 @@
     let authRetryInterval = null;
     let pingInterval = null;
     let isAuthRequiredByAdmin = localStorage.getItem('ean_auth_required') !== 'false';
-    // Apstiprinājums attiecas uz konkrētu veikala istabu. Ja QR kods ved uz citu istabu (piem., admins nomainīja nosaukumu vai iztīrīja datus), vecais apstiprinājums vairs nav derīgs.
+
     (function reconcileRoomState() {
       try {
         const fromHash = new URLSearchParams(window.location.hash.replace('#', '')).get('room');
@@ -460,9 +484,8 @@
     let appMode = localStorage.getItem('ean_app_mode') || 'inventory';
     let isSoundEnabled = localStorage.getItem('ean_sound_enabled') !== 'false';
     let isPricePromptEnabled = localStorage.getItem('ean_price_prompt') === 'true';
-    const OUTBOX_STORE='outbox';
+    const OUTBOX_STORE = 'outbox';
 
-    // 1. REŽĪMU REDZAMĪBA UN VIZUĀLĀ BLOĶĒŠANA
     function updateModesVisibility() {
       const lockInv = document.getElementById('lockIcon_inventory');
       const lockLbl = document.getElementById('lockIcon_labels');
@@ -472,7 +495,6 @@
       const btnRep = document.getElementById('modeBtn_repricing');
 
       if (isAuthRequiredByAdmin && !isDeviceApproved) {
-        // Bloķējam vizuāli visas 3 sadaļas
         lockInv?.classList.remove('hidden');
         lockLbl?.classList.remove('hidden');
         lockRep?.classList.remove('hidden');
@@ -482,7 +504,6 @@
         appMode = 'pricecheck';
         localStorage.setItem('ean_app_mode', 'pricecheck');
       } else {
-        // Noņemam atslēgas, ja klients ir apstiprināts
         lockInv?.classList.add('hidden');
         lockLbl?.classList.add('hidden');
         lockRep?.classList.add('hidden');
@@ -495,6 +516,16 @@
         }
       }
       renderModeButtonsState();
+    }
+
+    function handleModeClick(mode) {
+      if (isAuthRequiredByAdmin && !isDeviceApproved && mode !== 'pricecheck') {
+        playAudioTone('warning');
+        triggerHaptic('warning');
+        requestAuthorizationFromAdmin();
+        return;
+      }
+      setAppMode(mode);
     }
 
     function setAppMode(mode) {
@@ -579,7 +610,7 @@
 
     function promptWorkerChange() {
       const input = document.getElementById('loginWorkerInput');
-      if(input)input.value=getWorkerName();
+      if (input) input.value = getWorkerName();
       document.getElementById('workerLoginModal').classList.remove('hidden');
       stopCameraSafely();
       setTimeout(() => { if (input) { input.focus(); input.select(); } }, 150);
@@ -608,10 +639,11 @@
         return;
       }
 
-      const pendingTitle=document.querySelector('#pendingApprovalModal h3'); const pendingDesc=document.querySelector('#pendingApprovalModal p.text-xs');
-      if(pendingTitle) pendingTitle.innerText='Gaida apstiprinājumu';
-      if(pendingDesc) pendingDesc.innerText='Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat veikt tikai cenu pārbaudi.';
-      document.getElementById('pendingWorkerNameLabel').innerText=getWorkerName();
+      const pendingTitle = document.querySelector('#pendingApprovalModal h3');
+      const pendingDesc = document.querySelector('#pendingApprovalModal p.text-xs');
+      if (pendingTitle) pendingTitle.innerText = 'Gaida apstiprinājumu';
+      if (pendingDesc) pendingDesc.innerText = 'Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat veikt tikai cenu pārbaudi.';
+      document.getElementById('pendingWorkerNameLabel').innerText = getWorkerName();
       document.getElementById('pendingDeviceIdLabel').innerText = getDeviceId();
       document.getElementById('pendingApprovalModal').classList.remove('hidden');
 
@@ -630,7 +662,12 @@
       }
       const roomId = getRoomId();
       const deviceId = getDeviceId();
-      mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({ deviceId, workerName: getWorkerName(), requestId: `${Date.now()}_${Math.random().toString(36).slice(2,7)}`, time: Date.now() }));
+      mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({
+        deviceId,
+        workerName: getWorkerName(),
+        requestId: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        time: Date.now()
+      }));
       return true;
     }
 
@@ -642,6 +679,7 @@
       clearInterval(authRetryInterval);
       authRetryInterval = setInterval(() => { if (!isDeviceApproved) sendAuthRequestMqtt(); }, 3000);
     }
+
     function cancelAuthAndChangeWorker() {
       clearInterval(authRetryInterval);
       document.getElementById('pendingApprovalModal').classList.add('hidden');
@@ -671,7 +709,7 @@
       requestAuthorizationFromAdmin();
     }
 
-    function onAdminAuthorizationRejected(isBlocked=false) {
+    function onAdminAuthorizationRejected(isBlocked = false) {
       clearInterval(authRetryInterval);
       isDeviceApproved = false;
       sessionStorage.removeItem('ean_device_approved');
@@ -680,7 +718,7 @@
       document.getElementById('pendingApprovalModal').classList.remove('hidden');
       const title = document.querySelector('#pendingApprovalModal h3');
       const desc = document.querySelector('#pendingApprovalModal p.text-xs');
-      if(title)title.innerText=isBlocked?'Ierīce bloķēta':'Pieeja noraidīta';
+      if (title) title.innerText = isBlocked ? 'Ierīce bloķēta' : 'Pieeja noraidīta';
       if (desc) desc.innerText = 'Administrators noraidīja iepriekšējo pieprasījumu. Varat nospiest “Sūtīt vēlreiz” un pieprasīt atļauju atkārtoti.';
       playAudioTone('warning');
       triggerHaptic('warning');
@@ -720,7 +758,7 @@
     }
 
     function isAnyModalOpen() {
-      const modalIds = ['pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal'];
+      const modalIds = ['pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal', 'diagnosticModal'];
       return modalIds.some(id => {
         const el = document.getElementById(id);
         return el && !el.classList.contains('hidden');
@@ -772,8 +810,8 @@
             scansStore.createIndex('mode', 'mode', { unique: false });
             scansStore.createIndex('timestamp', 'timestamp', { unique: false });
           }
-          if(!db.objectStoreNames.contains('catalog'))db.createObjectStore('catalog',{keyPath:'ean'});
-          if(!db.objectStoreNames.contains(OUTBOX_STORE))db.createObjectStore(OUTBOX_STORE,{keyPath:'opId'});
+          if (!db.objectStoreNames.contains('catalog')) db.createObjectStore('catalog', { keyPath: 'ean' });
+          if (!db.objectStoreNames.contains(OUTBOX_STORE)) db.createObjectStore(OUTBOX_STORE, { keyPath: 'opId' });
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
@@ -857,8 +895,8 @@
 
     async function clearLocalScansHistory() {
       if (!confirm("Vai tiešām notīrīt skenēšanas sarakstu šajā tālrunī?\n\n(Datorā dati jau ir saglabāti un netiks dzēsti!)")) return;
-      const db=await openDb();
-      const tx=db.transaction('scans','readwrite');
+      const db = await openDb();
+      const tx = db.transaction('scans', 'readwrite');
       tx.objectStore('scans').clear();
       tx.oncomplete = () => {
         recentScansMemory = [];
@@ -867,8 +905,17 @@
       };
     }
 
-    function getWorkerName(){return localStorage.getItem('ean_device_id')||'Darbinieks';}
-    function getDeviceId(){let id=localStorage.getItem('ean_unique_device_id');if(!id){const rand=(crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`);id=`mob-${rand}`;localStorage.setItem('ean_unique_device_id',id)}return id;}
+    function getWorkerName() { return localStorage.getItem('ean_device_id') || 'Darbinieks'; }
+    function getDeviceId() {
+      let id = localStorage.getItem('ean_unique_device_id');
+      if (!id) {
+        const rand = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        id = `mob-${rand}`;
+        localStorage.setItem('ean_unique_device_id', id);
+      }
+      return id;
+    }
+
     function getRoomId() {
       const hash = window.location.hash.replace('#', '');
       const params = new URLSearchParams(hash);
@@ -893,26 +940,24 @@
 
     function updateDeviceHeaderUI() {
       const workerEl = document.getElementById('displayWorkerName');
-      if (workerEl) workerEl.innerText=getWorkerName();
+      if (workerEl) workerEl.innerText = getWorkerName();
       const roomEl = document.getElementById('currentRoomText');
       if (roomEl) roomEl.innerText = `Veikals: ${getStoreDisplayName()}`;
     }
 
-    // TĪRS INDIKATORS: PULSĒJOŠS ZAĻŠ (KAD IR TĪKLS), SARKANS (KAD NAV)
     function updateConnectionStatusUI(connected) {
       const dot = document.getElementById('mqttStatusDot');
       if (!dot) return;
       if (connected) {
-        dot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-pulse-emerald shrink-0";
+        dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse neon-pulse-emerald shrink-0";
       } else {
-        dot.className = "w-3 h-3 rounded-full bg-red-500 shrink-0";
+        dot.className = "w-3.5 h-3.5 rounded-full bg-red-500 shrink-0";
       }
     }
 
     let isSyncingQueue = false;
 
-
-    // === Savienojums: vairāki MQTT brokeri vienlaikus + Wi-Fi P2P (PeerJS) ===
+    // === Hibrīdā sakaru vadība (Multi-broker + Wi-Fi PeerJS) ===
     let mqttLinks = [];
     let mqttGen = 0;
     let mqttKey = '';
@@ -920,6 +965,7 @@
     let p2pTimer = null;
     const p2pConns = new Set();
     const mqttSeen = new Map();
+
     function mqttIsDuplicate(topic, msg) {
       const now = Date.now();
       const key = topic + '|' + msg.toString();
@@ -928,19 +974,24 @@
       mqttSeen.set(key, now);
       return false;
     }
+
     function p2pOpenCount() { let n = 0; p2pConns.forEach(c => { if (c.open) n++; }); return n; }
-    function mqttBrokerName(i) { return /hivemq/.test(MQTT_BROKERS[i]) ? 'HiveMQ' : /emqx/.test(MQTT_BROKERS[i]) ? 'EMQX' : /eclipse/.test(MQTT_BROKERS[i]) ? 'Eclipse' : ('Broker ' + (i + 1)); }
+    function mqttBrokerName(i) {
+      return /hivemq/.test(MQTT_BROKERS[i]) ? 'HiveMQ' : /emqx/.test(MQTT_BROKERS[i]) ? 'EMQX' : /eclipse/.test(MQTT_BROKERS[i]) ? 'Eclipse' : ('Broker ' + (i + 1));
+    }
     function mqttConnectedNames() {
       const n = mqttLinks.filter(l => l.client.connected).map(l => mqttBrokerName(l.index));
       if (p2pOpenCount() > 0) n.push('Wi-Fi P2P');
       return n;
     }
+
     function p2pStop() {
       clearInterval(p2pTimer); p2pTimer = null;
       p2pConns.forEach(c => { try { c.close(); } catch (e) {} });
       p2pConns.clear();
       if (p2pPeer) { try { p2pPeer.destroy(); } catch (e) {} p2pPeer = null; }
     }
+
     function mqttBuildFacade() {
       return {
         get connected() { return mqttLinks.some(l => l.client.connected) || p2pOpenCount() > 0; },
@@ -957,10 +1008,14 @@
           if (typeof cb === 'function') cb(sent ? null : new Error('Nav savienojuma'));
           return sent;
         },
-        end() { mqttLinks.forEach(l => { l.dead = true; clearTimeout(l.timer); try { l.client.end(true); } catch (e) {} }); mqttLinks = []; p2pStop(); }
+        end() {
+          mqttLinks.forEach(l => { l.dead = true; clearTimeout(l.timer); try { l.client.end(true); } catch (e) {} });
+          mqttLinks = [];
+          p2pStop();
+        }
       };
     }
-    // Wi-Fi P2P: viena lapa ("host") gaida, otra ("guest") pieslēdzas. Signalizācija iet pa 443 portu, pati datu plūsma – tieši starp ierīcēm.
+
     function p2pStart(role, room, gen, topics, onMessage, onStatus, onOpen) {
       p2pStop();
       if (typeof Peer === 'undefined' || !room) return;
@@ -995,7 +1050,6 @@
           peer.on('disconnected', () => { if (alive() && p2pPeer === peer && !peer.destroyed) { try { peer.reconnect(); } catch (e) {} } });
           peer.on('error', err => {
             const type = err && err.type;
-            console.warn('P2P kļūda:', type);
             if (type === 'peer-unavailable') return;
             if (alive() && p2pPeer === peer) {
               try { peer.destroy(); } catch (e) {}
@@ -1008,6 +1062,7 @@
       build();
       if (role === 'guest') p2pTimer = setInterval(dial, 6000);
     }
+
     function mqttOpenAll({ clientPrefix, topics, onMessage, onStatus, onSubscribed, p2pRole, p2pRoom }) {
       const key = topics.join(',');
       if (key === mqttKey && (p2pPeer || mqttLinks.some(l => !l.client.disconnected))) { onStatus(); return; }
@@ -1016,40 +1071,48 @@
       mqttLinks.forEach(l => { l.dead = true; clearTimeout(l.timer); try { l.client.end(true); } catch (e) {} });
       mqttLinks = [];
       mqttClient = mqttBuildFacade();
-      if (typeof mqtt !== 'undefined') MQTT_BROKERS.forEach((url, index) => {
-        const client = mqtt.connect(url, {
-          clientId: `${clientPrefix}_${Math.random().toString(36).substring(2, 10)}`,
-          clean: true, keepalive: 30, connectTimeout: 8000, reconnectPeriod: 0, resubscribe: false
-        });
-        const link = { client, index, fails: 0, dead: false, timer: null };
-        mqttLinks.push(link);
-        client.on('connect', () => {
-          link.fails = 0;
-          if (gen !== mqttGen) { try { client.end(true); } catch (e) {} return; }
-          client.subscribe(topics, err => {
-            if (gen !== mqttGen) return;
-            if (err) { console.warn('MQTT subscribe kļūda (' + mqttBrokerName(index) + '):', err); try { client.reconnect(); } catch (e) {} return; }
-            onStatus();
-            if (onSubscribed) onSubscribed(index);
+
+      if (typeof mqtt !== 'undefined') {
+        MQTT_BROKERS.forEach((url, index) => {
+          const client = mqtt.connect(url, {
+            clientId: `${clientPrefix}_${Math.random().toString(36).substring(2, 10)}`,
+            clean: true, keepalive: 30, connectTimeout: 8000, reconnectPeriod: 0, resubscribe: false
           });
+          const link = { client, index, fails: 0, dead: false, timer: null };
+          mqttLinks.push(link);
+
+          client.on('connect', () => {
+            link.fails = 0;
+            if (gen !== mqttGen) { try { client.end(true); } catch (e) {} return; }
+            client.subscribe(topics, err => {
+              if (gen !== mqttGen) return;
+              if (err) { try { client.reconnect(); } catch (e) {} return; }
+              onStatus();
+              if (onSubscribed) onSubscribed(index);
+            });
+          });
+
+          client.on('message', (topic, msg) => {
+            if (gen !== mqttGen) return;
+            if (mqttIsDuplicate(topic, msg)) return;
+            onMessage(topic, msg);
+          });
+
+          client.on('error', e => { console.warn('MQTT kļūda (' + mqttBrokerName(index) + '):', e && e.message); });
+
+          client.on('close', () => {
+            if (gen !== mqttGen || link.dead) return;
+            onStatus();
+            const delay = Math.min(60000, 3000 * Math.pow(2, Math.min(link.fails, 5))) + Math.random() * 1000;
+            link.fails++;
+            clearTimeout(link.timer);
+            link.timer = setTimeout(() => { if (gen === mqttGen && !link.dead) { try { client.reconnect(); } catch (e) {} } }, delay);
+          });
+
+          client.on('offline', () => { if (gen === mqttGen) onStatus(); });
         });
-        client.on('message', (topic, msg) => {
-          if (gen !== mqttGen) return;
-          if (mqttIsDuplicate(topic, msg)) return;
-          onMessage(topic, msg);
-        });
-        client.on('error', e => { console.warn('MQTT kļūda (' + mqttBrokerName(index) + '):', e && e.message); });
-        client.on('close', () => {
-          if (gen !== mqttGen || link.dead) return;
-          onStatus();
-          // Atkārtota pieslēgšanās ar augošu pauzi (3s → 60s), lai publiskie brokeri nenobloķē IP par pārāk biežiem mēģinājumiem
-          const delay = Math.min(60000, 3000 * Math.pow(2, Math.min(link.fails, 5))) + Math.random() * 1000;
-          link.fails++;
-          clearTimeout(link.timer);
-          link.timer = setTimeout(() => { if (gen === mqttGen && !link.dead) { try { client.reconnect(); } catch (e) {} } }, delay);
-        });
-        client.on('offline', () => { if (gen === mqttGen) onStatus(); });
-      });
+      }
+
       if (p2pRole) p2pStart(p2pRole, p2pRoom, gen, topics, onMessage, onStatus, () => { if (onSubscribed) onSubscribed('p2p'); });
       onStatus();
     }
@@ -1063,10 +1126,19 @@
         `ean2026/${roomId}/auth/${deviceId}`, `ean2026/${roomId}/auth_revoke`,
         `ean2026/${roomId}/price_update`, `ean2026/${roomId}/auth_setting`
       ];
+
       const heartbeat = () => {
-        if (mqttClient && mqttClient.connected) mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({ deviceId, workerName: getWorkerName(), approved: isDeviceApproved, broker: mqttConnectedNames().join('+'), time: Date.now() }));
+        if (mqttClient && mqttClient.connected) {
+          mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({
+            deviceId,
+            workerName: getWorkerName(),
+            approved: isDeviceApproved,
+            broker: mqttConnectedNames().join('+'),
+            time: Date.now()
+          }));
+        }
       };
-      let firstSyncDone = false;
+
       mqttOpenAll({
         clientPrefix: 'ean_mob',
         p2pRole: 'guest', p2pRoom: roomId,
@@ -1074,47 +1146,132 @@
         onStatus: () => updateConnectionStatusUI(mqttClient && mqttClient.connected),
         onSubscribed: () => {
           heartbeat();
-          clearInterval(pingInterval); pingInterval = setInterval(heartbeat, 15000);
+          clearInterval(pingInterval);
+          pingInterval = setInterval(heartbeat, 15000);
           if (isDeviceApproved) syncOfflineQueue(); else sendAuthRequestMqtt();
         },
         onMessage: async (topic, msg) => {
-        try {
-          const payload = JSON.parse(msg.toString());
-          if (topic.endsWith('/auth_setting')) {
-            isAuthRequiredByAdmin = payload.required !== false;
-            localStorage.setItem('ean_auth_required', isAuthRequiredByAdmin ? 'true' : 'false');
-            if (!isAuthRequiredByAdmin) { isDeviceApproved = true; sessionStorage.setItem('ean_device_approved', 'true'); }
-            else if (!localStorage.getItem('ean_device_approved_time')) { isDeviceApproved = false; sessionStorage.removeItem('ean_device_approved'); }
-            updateModesVisibility(); return;
-          }
-          if (topic.endsWith('/auth_revoke')) {
-            isDeviceApproved = false; sessionStorage.removeItem('ean_device_approved');
-            sessionStorage.removeItem('ean_worker_session_active'); localStorage.removeItem('ean_device_approved_time');
-            updateModesVisibility(); alert('Administrators datorā ir pārtraucis sesiju!'); return;
-          }
-          if (topic.includes(`/auth/${deviceId}`)) {
-            if (payload.approved === true) onAdminAuthorizationGranted();
-            else if(payload.approved===false){if(payload.reauth||payload.revoked)onAdminReauthRequired();else onAdminAuthorizationRejected(payload.blocked===true);}
-            return;
-          }
-          if(topic.includes(`/ack/${deviceId}`)&&(payload.opId||payload.scanId)){await acknowledgeOperation(payload.opId||payload.scanId,payload.scanId);return;}
-          if (topic.endsWith('/catalog') && Array.isArray(payload.items)) { await saveCatalogBatchToDb(payload.items); return; }
-          if (topic.endsWith('/price_update')) {
-            const item = localCatalog.get(String(payload.ean));
-            if (item) { item.cena = payload.price; await saveCatalogBatchToDb([item]); }
-          }
-        } catch (e) { console.error('MQTT ziņas kļūda:', e); }
+          try {
+            const payload = JSON.parse(msg.toString());
+            if (topic.endsWith('/auth_setting')) {
+              isAuthRequiredByAdmin = payload.required !== false;
+              localStorage.setItem('ean_auth_required', isAuthRequiredByAdmin ? 'true' : 'false');
+              if (!isAuthRequiredByAdmin) {
+                isDeviceApproved = true;
+                sessionStorage.setItem('ean_device_approved', 'true');
+              } else if (!localStorage.getItem('ean_device_approved_time')) {
+                isDeviceApproved = false;
+                sessionStorage.removeItem('ean_device_approved');
+              }
+              updateModesVisibility();
+              return;
+            }
+            if (topic.endsWith('/auth_revoke')) {
+              isDeviceApproved = false;
+              sessionStorage.removeItem('ean_device_approved');
+              sessionStorage.removeItem('ean_worker_session_active');
+              localStorage.removeItem('ean_device_approved_time');
+              updateModesVisibility();
+              alert('Administrators datorā ir pārtraucis sesiju!');
+              return;
+            }
+            if (topic.includes(`/auth/${deviceId}`)) {
+              if (payload.approved === true) onAdminAuthorizationGranted();
+              else if (payload.approved === false) {
+                if (payload.reauth || payload.revoked) onAdminReauthRequired();
+                else onAdminAuthorizationRejected(payload.blocked === true);
+              }
+              return;
+            }
+            if (topic.includes(`/ack/${deviceId}`) && (payload.opId || payload.scanId)) {
+              await acknowledgeOperation(payload.opId || payload.scanId, payload.scanId);
+              return;
+            }
+            if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
+              await saveCatalogBatchToDb(payload.items);
+              return;
+            }
+            if (topic.endsWith('/price_update')) {
+              const item = localCatalog.get(String(payload.ean));
+              if (item) {
+                item.cena = payload.price;
+                await saveCatalogBatchToDb([item]);
+              }
+            }
+          } catch (e) { console.error('MQTT ziņas kļūda:', e); }
         }
       });
     }
-    async function queueOperation(type,payload){const db=await openDb(),opId=payload.opId||`op-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,item={opId,type,payload:{...payload,opId,opType:type,deviceId:getDeviceId(),workerName:getWorkerName()},createdAt:Date.now(),attempts:0,status:'queued'};return new Promise(res=>{const tx=db.transaction(OUTBOX_STORE,'readwrite');tx.objectStore(OUTBOX_STORE).put(item);tx.oncomplete=()=>res(item);tx.onerror=()=>res(item)})}
-    async function getOutbox(){const db=await openDb();return new Promise(res=>{const q=db.transaction(OUTBOX_STORE,'readonly').objectStore(OUTBOX_STORE).getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])})}
-    async function acknowledgeOperation(opId,scanId){const db=await openDb();await new Promise(res=>{const tx=db.transaction(OUTBOX_STORE,'readwrite');tx.objectStore(OUTBOX_STORE).delete(opId);tx.oncomplete=res;tx.onerror=res});if(scanId)await markScanSyncedInDb(scanId);updateSyncQueueBadge()}
-    async function flushOutbox(){if(isSyncingQueue||!isDeviceApproved||!mqttClient||!mqttClient.connected)return;isSyncingQueue=true;const room=getRoomId(),items=(await getOutbox()).sort((a,b)=>a.createdAt-b.createdAt);for(const op of items){if(!mqttClient.connected)break;const topic=op.type==='scan'?'scan':op.type==='update'?'scan_update':'scan_delete';mqttClient.publish(`ean2026/${room}/${topic}`,JSON.stringify(op.payload));await new Promise(r=>setTimeout(r,180))}isSyncingQueue=false;updateSyncQueueBadge()}
-    async function syncOfflineQueue(){const all=await getAllScansFromDb();const existing=await getOutbox();const ids=new Set(existing.map(x=>x.payload?.id));for(const item of all.filter(x=>!x.synced&&x.mode!=='pricecheck')){if(!ids.has(item.id))await queueOperation(item.pendingUpdate?'update':'scan',item)}await flushOutbox()}
+
+    async function queueOperation(type, payload) {
+      const db = await openDb();
+      const opId = payload.opId || `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const item = {
+        opId,
+        type,
+        payload: { ...payload, opId, opType: type, deviceId: getDeviceId(), workerName: getWorkerName() },
+        createdAt: Date.now(),
+        attempts: 0,
+        status: 'queued'
+      };
+      return new Promise(res => {
+        const tx = db.transaction(OUTBOX_STORE, 'readwrite');
+        tx.objectStore(OUTBOX_STORE).put(item);
+        tx.oncomplete = () => res(item);
+        tx.onerror = () => res(item);
+      });
+    }
+
+    async function getOutbox() {
+      const db = await openDb();
+      return new Promise(res => {
+        const q = db.transaction(OUTBOX_STORE, 'readonly').objectStore(OUTBOX_STORE).getAll();
+        q.onsuccess = () => res(q.result || []);
+        q.onerror = () => res([]);
+      });
+    }
+
+    async function acknowledgeOperation(opId, scanId) {
+      const db = await openDb();
+      await new Promise(res => {
+        const tx = db.transaction(OUTBOX_STORE, 'readwrite');
+        tx.objectStore(OUTBOX_STORE).delete(opId);
+        tx.oncomplete = res;
+        tx.onerror = res;
+      });
+      if (scanId) await markScanSyncedInDb(scanId);
+      updateSyncQueueBadge();
+    }
+
+    async function flushOutbox() {
+      if (isSyncingQueue || !isDeviceApproved || !mqttClient || !mqttClient.connected) return;
+      isSyncingQueue = true;
+      const room = getRoomId();
+      const items = (await getOutbox()).sort((a, b) => a.createdAt - b.createdAt);
+      for (const op of items) {
+        if (!mqttClient.connected) break;
+        const topic = op.type === 'scan' ? 'scan' : op.type === 'update' ? 'scan_update' : 'scan_delete';
+        mqttClient.publish(`ean2026/${room}/${topic}`, JSON.stringify(op.payload));
+        await new Promise(r => setTimeout(r, 180));
+      }
+      isSyncingQueue = false;
+      updateSyncQueueBadge();
+    }
+
+    async function syncOfflineQueue() {
+      const all = await getAllScansFromDb();
+      const existing = await getOutbox();
+      const ids = new Set(existing.map(x => x.payload?.id));
+      for (const item of all.filter(x => !x.synced && x.mode !== 'pricecheck')) {
+        if (!ids.has(item.id)) await queueOperation(item.pendingUpdate ? 'update' : 'scan', item);
+      }
+      await flushOutbox();
+    }
+
     async function updateSyncQueueBadge(count = null) {
       if (count === null) {
-        const out=await getOutbox();count=out.length;
+        const out = await getOutbox();
+        count = out.length;
       }
       const badge = document.getElementById('syncBadge');
       const label = document.getElementById('unsyncedCount');
@@ -1247,7 +1404,10 @@
             await cameraTrack.applyConstraints({ advanced: [{ torch: isTorchOn }] });
             updateTorchUI(isTorchOn);
           }
-        } catch (e2) { isTorchOn = !isTorchOn; alert("Zibspuldze šajā ierīcē netiek atbalstīta."); }
+        } catch (e2) {
+          isTorchOn = !isTorchOn;
+          alert("Zibspuldze šajā ierīcē netiek atbalstīta.");
+        }
       }
     }
 
@@ -1259,7 +1419,6 @@
         : "w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
-    // SKENĒŠANAS APSTRĀDE AR CENU ZĪMJU DUBLIKĀTU BRĪDINĀJUMU
     async function onBarcodeDetected(decodedText) {
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
@@ -1283,7 +1442,6 @@
         return;
       }
 
-      // CENU ZĪMES: PĀRBAUDĀM DUBLIKĀTUS!
       if (appMode === 'labels') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1304,14 +1462,14 @@
 
         const record = {
           id: 'lbl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-          deviceId:getDeviceId(),
-          workerName:getWorkerName(),
-          allowInventoryPriceEdit:isPricePromptEnabled,
+          deviceId: getDeviceId(),
+          workerName: getWorkerName(),
+          allowInventoryPriceEdit: isPricePromptEnabled,
           ean: cleanEan,
           name: name,
           basePrice: basePriceEur,
           price: basePriceEur,
-          qty: 1, // DAUDZUMS VIENMĒR 1!
+          qty: 1,
           mode: 'labels',
           timestamp: Date.now(),
           synced: false
@@ -1637,9 +1795,9 @@
 
       const scanRecord = {
         id: (appMode === 'repricing' ? 'rep_' : (appMode === 'labels' ? 'lbl_' : 'inv_')) + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-        deviceId:getDeviceId(),
-        workerName:getWorkerName(),
-        allowInventoryPriceEdit:isPricePromptEnabled,
+        deviceId: getDeviceId(),
+        workerName: getWorkerName(),
+        allowInventoryPriceEdit: isPricePromptEnabled,
         ean: activeScanData.ean,
         name: activeScanData.name,
         basePrice: activeScanData.basePrice,
@@ -1677,12 +1835,16 @@
       else resumeCamera();
     }
 
-    async function sendScanToMqtt(record){await queueOperation('scan',record);flushOutbox()}
+    async function sendScanToMqtt(record) {
+      await queueOperation('scan', record);
+      flushOutbox();
+    }
+
     function renderRecentScans() {
       const list = document.getElementById('recentScansList');
       const filtered = recentScansMemory.filter(x => x.mode === appMode);
       if (filtered.length === 0) {
-        list.innerHTML = `<p class="text-center text-xs text-slate-500 py-4">Šajā režīmā vēl nav skenējumu</p>`;
+        list.innerHTML = `<p class="text-center text-xs text-slate-500 py-4 font-mono">Šajā režīmā vēl nav skenējumu</p>`;
         return;
       }
 
@@ -1790,8 +1952,6 @@
       }
 
       const formattedPrice = newPrice.toFixed(2);
-      const isOnline = mqttClient && mqttClient.connected;
-
       const db = await openDb();
       const tx = db.transaction('scans', 'readwrite');
       const store = tx.objectStore('scans');
@@ -1803,12 +1963,17 @@
           data.qty = newQty;
           data.price = formattedPrice;
           data.isPriceModified = (data.basePrice !== formattedPrice);
-          data.synced=false;data.pendingUpdate=true;
+          data.synced = false;
+          data.pendingUpdate = true;
           store.put(data);
 
           const memItem = recentScansMemory.find(x => x.id === currentEditScanId);
-          if(memItem){memItem.qty=newQty;memItem.price=formattedPrice;memItem.synced=false;}
-          queueOperation('update',{id:data.id,ean:data.ean,qty:newQty,price:formattedPrice,mode:data.mode}).then(flushOutbox);
+          if (memItem) {
+            memItem.qty = newQty;
+            memItem.price = formattedPrice;
+            memItem.synced = false;
+          }
+          queueOperation('update', { id: data.id, ean: data.ean, qty: newQty, price: formattedPrice, mode: data.mode }).then(flushOutbox);
         }
         closeEditModal();
         renderRecentScans();
@@ -1818,16 +1983,19 @@
 
     async function deleteCurrentEditScan() {
       if (!currentEditScanId || !confirm("Dzēst šo ierakstu?")) return;
-      const deleteId=currentEditScanId;
-      const all=await getAllScansFromDb();
-      const doomed=all.find(x=>x.id===deleteId);
-      await queueOperation('delete',{id:deleteId,ean:doomed?.ean,mode:doomed?.mode});
-      const db=await openDb();
-      const tx=db.transaction('scans','readwrite');
+      const deleteId = currentEditScanId;
+      const all = await getAllScansFromDb();
+      const doomed = all.find(x => x.id === deleteId);
+      await queueOperation('delete', { id: deleteId, ean: doomed?.ean, mode: doomed?.mode });
+      const db = await openDb();
+      const tx = db.transaction('scans', 'readwrite');
       tx.objectStore('scans').delete(deleteId);
-      tx.oncomplete=()=>{
-        recentScansMemory=recentScansMemory.filter(x=>x.id!==deleteId);
-        closeEditModal(); renderRecentScans(); updateSyncQueueBadge(); flushOutbox();
+      tx.oncomplete = () => {
+        recentScansMemory = recentScansMemory.filter(x => x.id !== deleteId);
+        closeEditModal();
+        renderRecentScans();
+        updateSyncQueueBadge();
+        flushOutbox();
       };
     }
 
@@ -1847,7 +2015,7 @@
 
     async function openSettingsModal() {
       await stopCameraSafely();
-      document.getElementById('settingDeviceId').value=getWorkerName();
+      document.getElementById('settingDeviceId').value = getWorkerName();
       document.getElementById('settingRoomId').value = getStoreDisplayName();
       document.getElementById('settingSoundToggle').checked = isSoundEnabled;
       document.getElementById('settingPricePromptToggle').checked = isPricePromptEnabled;
