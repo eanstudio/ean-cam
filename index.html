@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.14</title>
+  <title>EAN Skeneris Pro V2.15.1</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -64,7 +64,7 @@
 
     <div class="flex items-center gap-2">
       <div id="syncBadge" class="hidden px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold">
-        <span id="unsyncedCount">0</span>⏳
+        <span id="unsyncedCount">0</span> gaida ACK
       </div>
       <button type="button" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Pārslēgt kameru">📷</button>
       <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Zibspuldze">🔦</button>
@@ -147,10 +147,13 @@
     <div class="flex-1 flex flex-col min-h-0 bg-slate-900 border border-white/10 rounded-2xl p-2.5 overflow-hidden">
       <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
         <span id="listTitleLabel" class="text-xs font-bold uppercase text-slate-300 font-mono">Pēdējās 20 inventūras preces:</span>
+        <div class="flex items-center gap-2">
+          <div class="hidden sm:flex items-center gap-2 text-[10px] font-mono text-slate-400" title="Sinhronizācijas statuss"><span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-amber-500"></i>Gaida ACK</span><span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-emerald-500"></i>Saņemts</span></div>
         <button type="button" onclick="clearLocalScansHistory()" class="px-2 py-0.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1">
           <span>Notīrīt</span> <span>🗑️</span>
-        </button>
+        </button></div>
       </div>
+      <div class="sm:hidden flex items-center gap-3 px-1 pt-1 text-[9px] font-mono text-slate-500"><span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-amber-500"></i>Gaida apstiprinājumu</span><span class="flex items-center gap-1"><i class="w-2 h-2 rounded-full bg-emerald-500"></i>Saņemts datorā</span></div>
       <div id="recentScansList" class="smooth-scroll-list flex-1 overflow-y-auto divide-y divide-white/5 space-y-1 pt-1">
         <p class="text-center text-xs text-slate-500 py-4">Vēl nav noskenētu preču</p>
       </div>
@@ -460,7 +463,6 @@
     let appMode = localStorage.getItem('ean_app_mode') || 'inventory';
     let isSoundEnabled = localStorage.getItem('ean_sound_enabled') !== 'false';
     let isPricePromptEnabled = localStorage.getItem('ean_price_prompt') === 'true';
-    const OUTBOX_STORE='outbox';
 
     // 1. REŽĪMU REDZAMĪBA UN VIZUĀLĀ BLOĶĒŠANA
     function updateModesVisibility() {
@@ -579,7 +581,7 @@
 
     function promptWorkerChange() {
       const input = document.getElementById('loginWorkerInput');
-      if(input)input.value=getWorkerName();
+      if (input) input.value = getWorkerName();
       document.getElementById('workerLoginModal').classList.remove('hidden');
       stopCameraSafely();
       setTimeout(() => { if (input) { input.focus(); input.select(); } }, 150);
@@ -611,7 +613,7 @@
       const pendingTitle=document.querySelector('#pendingApprovalModal h3'); const pendingDesc=document.querySelector('#pendingApprovalModal p.text-xs');
       if(pendingTitle) pendingTitle.innerText='Gaida apstiprinājumu';
       if(pendingDesc) pendingDesc.innerText='Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat veikt tikai cenu pārbaudi.';
-      document.getElementById('pendingWorkerNameLabel').innerText=getWorkerName();
+      document.getElementById('pendingWorkerNameLabel').innerText = getWorkerName();
       document.getElementById('pendingDeviceIdLabel').innerText = getDeviceId();
       document.getElementById('pendingApprovalModal').classList.remove('hidden');
 
@@ -671,7 +673,7 @@
       requestAuthorizationFromAdmin();
     }
 
-    function onAdminAuthorizationRejected(isBlocked=false) {
+    function onAdminAuthorizationRejected() {
       clearInterval(authRetryInterval);
       isDeviceApproved = false;
       sessionStorage.removeItem('ean_device_approved');
@@ -680,7 +682,7 @@
       document.getElementById('pendingApprovalModal').classList.remove('hidden');
       const title = document.querySelector('#pendingApprovalModal h3');
       const desc = document.querySelector('#pendingApprovalModal p.text-xs');
-      if(title)title.innerText=isBlocked?'Ierīce bloķēta':'Pieeja noraidīta';
+      if (title) title.innerText = 'Pieeja noraidīta';
       if (desc) desc.innerText = 'Administrators noraidīja iepriekšējo pieprasījumu. Varat nospiest “Sūtīt vēlreiz” un pieprasīt atļauju atkārtoti.';
       playAudioTone('warning');
       triggerHaptic('warning');
@@ -763,7 +765,7 @@
 
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v11', 2);
+        const req = indexedDB.open('EanScannerDB_v11', 1);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -772,8 +774,7 @@
             scansStore.createIndex('mode', 'mode', { unique: false });
             scansStore.createIndex('timestamp', 'timestamp', { unique: false });
           }
-          if(!db.objectStoreNames.contains('catalog'))db.createObjectStore('catalog',{keyPath:'ean'});
-          if(!db.objectStoreNames.contains(OUTBOX_STORE))db.createObjectStore(OUTBOX_STORE,{keyPath:'opId'});
+          if (!db.objectStoreNames.contains('catalog')) db.createObjectStore('catalog', { keyPath: 'ean' });
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
@@ -812,7 +813,11 @@
             data.synced = true;
             delete data.pendingUpdate;
             store.put(data);
+            const memoryItem = recentScansMemory.find(x => x.id === id);
+            if (memoryItem) memoryItem.synced = true;
           }
+          renderRecentScans();
+          updateSyncQueueBadge();
           resolve();
         };
         getReq.onerror = () => resolve();
@@ -857,8 +862,8 @@
 
     async function clearLocalScansHistory() {
       if (!confirm("Vai tiešām notīrīt skenēšanas sarakstu šajā tālrunī?\n\n(Datorā dati jau ir saglabāti un netiks dzēsti!)")) return;
-      const db=await openDb();
-      const tx=db.transaction('scans','readwrite');
+      const db = await openDb();
+      const tx = db.transaction('scans', 'readwrite');
       tx.objectStore('scans').clear();
       tx.oncomplete = () => {
         recentScansMemory = [];
@@ -867,8 +872,16 @@
       };
     }
 
-    function getWorkerName(){return localStorage.getItem('ean_device_id')||'Darbinieks';}
-    function getDeviceId(){let id=localStorage.getItem('ean_unique_device_id');if(!id){const rand=(crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(36).slice(2)}`);id=`mob-${rand}`;localStorage.setItem('ean_unique_device_id',id)}return id;}
+    function getWorkerName() { return localStorage.getItem('ean_device_id') || 'Darbinieks'; }
+    function getDeviceId() {
+      let id = localStorage.getItem('ean_unique_device_id');
+      if (!id) {
+        const suffix = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        id = `mob-${suffix}`;
+        localStorage.setItem('ean_unique_device_id', id);
+      }
+      return id;
+    }
     function getRoomId() {
       const hash = window.location.hash.replace('#', '');
       const params = new URLSearchParams(hash);
@@ -893,7 +906,7 @@
 
     function updateDeviceHeaderUI() {
       const workerEl = document.getElementById('displayWorkerName');
-      if (workerEl) workerEl.innerText=getWorkerName();
+      if (workerEl) workerEl.innerText = getWorkerName();
       const roomEl = document.getElementById('currentRoomText');
       if (roomEl) roomEl.innerText = `Veikals: ${getStoreDisplayName()}`;
     }
@@ -1094,10 +1107,10 @@
           }
           if (topic.includes(`/auth/${deviceId}`)) {
             if (payload.approved === true) onAdminAuthorizationGranted();
-            else if(payload.approved===false){if(payload.reauth||payload.revoked)onAdminReauthRequired();else onAdminAuthorizationRejected(payload.blocked===true);}
+            else if (payload.approved === false) { if (payload.reauth) onAdminReauthRequired(); else onAdminAuthorizationRejected(); }
             return;
           }
-          if(topic.includes(`/ack/${deviceId}`)&&(payload.opId||payload.scanId)){await acknowledgeOperation(payload.opId||payload.scanId,payload.scanId);return;}
+          if (topic.includes(`/ack/${deviceId}`) && payload.scanId) { markScanSyncedInDb(payload.scanId); return; }
           if (topic.endsWith('/catalog') && Array.isArray(payload.items)) { await saveCatalogBatchToDb(payload.items); return; }
           if (topic.endsWith('/price_update')) {
             const item = localCatalog.get(String(payload.ean));
@@ -1107,14 +1120,37 @@
         }
       });
     }
-    async function queueOperation(type,payload){const db=await openDb(),opId=payload.opId||`op-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,item={opId,type,payload:{...payload,opId,opType:type,deviceId:getDeviceId(),workerName:getWorkerName()},createdAt:Date.now(),attempts:0,status:'queued'};return new Promise(res=>{const tx=db.transaction(OUTBOX_STORE,'readwrite');tx.objectStore(OUTBOX_STORE).put(item);tx.oncomplete=()=>res(item);tx.onerror=()=>res(item)})}
-    async function getOutbox(){const db=await openDb();return new Promise(res=>{const q=db.transaction(OUTBOX_STORE,'readonly').objectStore(OUTBOX_STORE).getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])})}
-    async function acknowledgeOperation(opId,scanId){const db=await openDb();await new Promise(res=>{const tx=db.transaction(OUTBOX_STORE,'readwrite');tx.objectStore(OUTBOX_STORE).delete(opId);tx.oncomplete=res;tx.onerror=res});if(scanId)await markScanSyncedInDb(scanId);updateSyncQueueBadge()}
-    async function flushOutbox(){if(isSyncingQueue||!isDeviceApproved||!mqttClient||!mqttClient.connected)return;isSyncingQueue=true;const room=getRoomId(),items=(await getOutbox()).sort((a,b)=>a.createdAt-b.createdAt);for(const op of items){if(!mqttClient.connected)break;const topic=op.type==='scan'?'scan':op.type==='update'?'scan_update':'scan_delete';mqttClient.publish(`ean2026/${room}/${topic}`,JSON.stringify(op.payload));await new Promise(r=>setTimeout(r,180))}isSyncingQueue=false;updateSyncQueueBadge()}
-    async function syncOfflineQueue(){const all=await getAllScansFromDb();const existing=await getOutbox();const ids=new Set(existing.map(x=>x.payload?.id));for(const item of all.filter(x=>!x.synced&&x.mode!=='pricecheck')){if(!ids.has(item.id))await queueOperation(item.pendingUpdate?'update':'scan',item)}await flushOutbox()}
+    async function syncOfflineQueue() {
+      if (isSyncingQueue || !isDeviceApproved) return;
+      const all = await getAllScansFromDb();
+      const unsynced = all.filter(x => !x.synced && x.mode !== 'pricecheck');
+      updateSyncQueueBadge(unsynced.length);
+      if (unsynced.length === 0 || !mqttClient || !mqttClient.connected) return;
+
+      isSyncingQueue = true;
+      const roomId = getRoomId();
+
+      for (const item of unsynced) {
+        if (!mqttClient.connected || !isDeviceApproved) break;
+        if (item.pendingUpdate) {
+          mqttClient.publish(`ean2026/${roomId}/scan_update`, JSON.stringify({
+            id: item.id, ean: item.ean, qty: item.qty, price: item.price, mode: item.mode, deviceId: getDeviceId()
+          }));
+          await markScanSyncedInDb(item.id);
+          item.synced = true;
+        } else {
+          mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(item));
+        }
+        await new Promise(r => setTimeout(r, 150));
+      }
+      isSyncingQueue = false;
+      updateSyncQueueBadge();
+    }
+
     async function updateSyncQueueBadge(count = null) {
       if (count === null) {
-        const out=await getOutbox();count=out.length;
+        const all = await getAllScansFromDb();
+        count = all.filter(x => !x.synced && x.mode !== 'pricecheck').length;
       }
       const badge = document.getElementById('syncBadge');
       const label = document.getElementById('unsyncedCount');
@@ -1304,9 +1340,8 @@
 
         const record = {
           id: 'lbl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-          deviceId:getDeviceId(),
-          workerName:getWorkerName(),
-          allowInventoryPriceEdit:isPricePromptEnabled,
+          deviceId: getDeviceId(),
+          workerName: getWorkerName(),
           ean: cleanEan,
           name: name,
           basePrice: basePriceEur,
@@ -1637,9 +1672,8 @@
 
       const scanRecord = {
         id: (appMode === 'repricing' ? 'rep_' : (appMode === 'labels' ? 'lbl_' : 'inv_')) + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-        deviceId:getDeviceId(),
-        workerName:getWorkerName(),
-        allowInventoryPriceEdit:isPricePromptEnabled,
+        deviceId: getDeviceId(),
+        workerName: getWorkerName(),
         ean: activeScanData.ean,
         name: activeScanData.name,
         basePrice: activeScanData.basePrice,
@@ -1677,7 +1711,13 @@
       else resumeCamera();
     }
 
-    async function sendScanToMqtt(record){await queueOperation('scan',record);flushOutbox()}
+    function sendScanToMqtt(record) {
+      const roomId = getRoomId();
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(`ean2026/${roomId}/scan`, JSON.stringify(record));
+      }
+    }
+
     function renderRecentScans() {
       const list = document.getElementById('recentScansList');
       const filtered = recentScansMemory.filter(x => x.mode === appMode);
@@ -1729,12 +1769,21 @@
       const isRepriceMode = (item.mode === 'repricing');
       const modalTitle = document.getElementById('editModalTitle');
 
+      const inputLabel = document.getElementById('editInputLabel');
+      const inputUnit = document.getElementById('editInputUnit');
+      const inputDisplay = document.getElementById('editKeypadDisplay');
       if (isRepriceMode) {
-        if (modalTitle) modalTitle.innerText = "Labot cenu (€)";
+        if (modalTitle) modalTitle.innerText = "Labot cenu";
         activeEditTarget = 'price';
+        if (inputLabel) inputLabel.innerText = "Cena:";
+        if (inputUnit) inputUnit.innerText = "€";
+        if (inputDisplay) inputDisplay.value = editPriceValue;
       } else {
         if (modalTitle) modalTitle.innerText = "Labot daudzumu";
         activeEditTarget = 'qty';
+        if (inputLabel) inputLabel.innerText = "Daudzums:";
+        if (inputUnit) inputUnit.innerText = "gab. / kg";
+        if (inputDisplay) inputDisplay.value = editQtyValue;
       }
 
       document.getElementById('editModal').classList.remove('hidden');
@@ -1803,12 +1852,19 @@
           data.qty = newQty;
           data.price = formattedPrice;
           data.isPriceModified = (data.basePrice !== formattedPrice);
-          data.synced=false;data.pendingUpdate=true;
+          data.synced = isOnline;
+          if (!isOnline) data.pendingUpdate = true;
           store.put(data);
 
           const memItem = recentScansMemory.find(x => x.id === currentEditScanId);
-          if(memItem){memItem.qty=newQty;memItem.price=formattedPrice;memItem.synced=false;}
-          queueOperation('update',{id:data.id,ean:data.ean,qty:newQty,price:formattedPrice,mode:data.mode}).then(flushOutbox);
+          if (memItem) { memItem.qty = newQty; memItem.price = formattedPrice; memItem.synced = isOnline; }
+
+          if (isOnline) {
+            const roomId = getRoomId();
+            mqttClient.publish(`ean2026/${roomId}/scan_update`, JSON.stringify({
+              id: data.id, ean: data.ean, qty: newQty, price: formattedPrice, mode: data.mode, deviceId: getDeviceId(), workerName: getWorkerName()
+            }));
+          }
         }
         closeEditModal();
         renderRecentScans();
@@ -1818,16 +1874,18 @@
 
     async function deleteCurrentEditScan() {
       if (!currentEditScanId || !confirm("Dzēst šo ierakstu?")) return;
-      const deleteId=currentEditScanId;
-      const all=await getAllScansFromDb();
-      const doomed=all.find(x=>x.id===deleteId);
-      await queueOperation('delete',{id:deleteId,ean:doomed?.ean,mode:doomed?.mode});
-      const db=await openDb();
-      const tx=db.transaction('scans','readwrite');
-      tx.objectStore('scans').delete(deleteId);
-      tx.oncomplete=()=>{
-        recentScansMemory=recentScansMemory.filter(x=>x.id!==deleteId);
-        closeEditModal(); renderRecentScans(); updateSyncQueueBadge(); flushOutbox();
+      const db = await openDb();
+      const tx = db.transaction('scans', 'readwrite');
+      tx.objectStore('scans').delete(currentEditScanId);
+      tx.oncomplete = () => {
+        recentScansMemory = recentScansMemory.filter(x => x.id !== currentEditScanId);
+        const roomId = getRoomId();
+        if (mqttClient && mqttClient.connected) {
+          mqttClient.publish(`ean2026/${roomId}/scan_delete`, JSON.stringify({ id: currentEditScanId, deviceId: getDeviceId(), workerName: getWorkerName() }));
+        }
+        closeEditModal();
+        renderRecentScans();
+        updateSyncQueueBadge();
       };
     }
 
@@ -1847,7 +1905,7 @@
 
     async function openSettingsModal() {
       await stopCameraSafely();
-      document.getElementById('settingDeviceId').value=getWorkerName();
+      document.getElementById('settingDeviceId').value = getWorkerName();
       document.getElementById('settingRoomId').value = getStoreDisplayName();
       document.getElementById('settingSoundToggle').checked = isSoundEnabled;
       document.getElementById('settingPricePromptToggle').checked = isPricePromptEnabled;
