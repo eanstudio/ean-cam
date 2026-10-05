@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.15</title>
+  <title>EAN Skeneris Pro V2.21</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -51,7 +51,7 @@
 </head>
 <body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
 
-  <!-- Augšējā josla: TIKAI VĀRDS UN PULSĒJOŠAIS PUNKTS -->
+  <!-- Augšējā josla: Vārds un savienojuma punkts -->
   <header class="px-3.5 py-2.5 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
     <div class="flex items-center gap-2.5">
       <button type="button" onclick="openDiagnosticModal()" class="flex items-center gap-2 p-1 rounded-xl active:scale-95 transition" title="Pārbaudīt savienojumu">
@@ -66,7 +66,7 @@
       </div>
       <button type="button" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Pārslēgt kameru">📷</button>
       <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Zibspuldze">🔦</button>
-      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">⚙️️</button>
+      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">⚙️</button>
     </div>
   </header>
 
@@ -150,12 +150,12 @@
         </button>
       </div>
       <div id="recentScansList" class="smooth-scroll-list flex-1 overflow-y-auto divide-y divide-white/5 space-y-1 pt-1">
-        <p class="text-center text-xs text-slate-500 py-4">Vēl nav noskenētu preču</p>
+        <p class="text-center text-xs text-slate-500 py-4 font-mono">Vēl nav noskenētu preču</p>
       </div>
     </div>
   </main>
 
-  <!-- Diagnostikas modālis -->
+  <!-- MODĀLIS: Diagnostika -->
   <div id="diagnosticModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-5 space-y-3.5 shadow-2xl text-center">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
@@ -181,7 +181,7 @@
     </div>
   </div>
 
-  <!-- Gaida apstiprinājumu -->
+  <!-- MODĀLIS: Gaida apstiprinājumu -->
   <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-3xl animate-pulse">⏳</div>
@@ -207,7 +207,7 @@
     </div>
   </div>
 
-  <!-- Pieteikšanās -->
+  <!-- MODĀLIS: Pieteikšanās -->
   <div id="workerLoginModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-3xl shadow-xs">👤</div>
@@ -224,7 +224,7 @@
     </div>
   </div>
 
-  <!-- Kataloga meklētājs -->
+  <!-- MODĀLIS: Preču meklētājs bāzē -->
   <div id="catalogSearchModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col p-3 sm:p-5">
     <div class="w-full max-w-lg mx-auto flex-1 flex flex-col bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 overflow-hidden shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -243,7 +243,7 @@
     </div>
   </div>
 
-  <!-- Kods ar roku -->
+  <!-- MODĀLIS: Koda ievade ar roku -->
   <div id="manualEanModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
@@ -274,7 +274,7 @@
     </div>
   </div>
 
-  <!-- Preces kartīte un daudzums -->
+  <!-- MODĀLIS: Preces kartīte un daudzums -->
   <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
@@ -339,11 +339,11 @@
     </div>
   </div>
 
-  <!-- Labot ierakstu -->
+  <!-- MODĀLIS: Labot ierakstu (Ar precīzi definētu gab/kg mērvienību!) -->
   <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
     <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
-        <h3 id="editModalTitle" class="text-xs font-bold text-white uppercase font-mono">Labot ierakstu</h3>
+        <h3 id="editModalTitle" class="text-xs font-bold text-white uppercase font-mono">Labot daudzumu</h3>
         <button type="button" onclick="closeEditModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
       </div>
       <div>
@@ -352,10 +352,10 @@
       </div>
 
       <div class="flex items-center justify-between px-4 py-2 bg-black/70 rounded-2xl border border-white/15">
-        <span id="editInputLabel" class="text-xs font-mono uppercase font-bold text-slate-400">Vērtība:</span>
+        <span id="editInputLabel" class="text-xs font-mono uppercase font-bold text-slate-400">Daudzums:</span>
         <div class="flex items-baseline gap-1">
-          <input type="text" id="editKeypadDisplay" readonly inputmode="none" value="0.00" class="text-3xl font-bold font-mono text-emerald-400 bg-transparent text-right w-36 focus:outline-none">
-          <span id="editInputUnit" class="text-xs text-slate-400 font-mono">€</span>
+          <input type="text" id="editKeypadDisplay" readonly inputmode="none" value="1" class="text-3xl font-bold font-mono text-emerald-400 bg-transparent text-right w-36 focus:outline-none">
+          <span id="editInputUnit" class="text-xs text-slate-400 font-mono">gab / kg</span>
         </div>
       </div>
 
@@ -381,7 +381,7 @@
     </div>
   </div>
 
-  <!-- Iestatījumi -->
+  <!-- MODĀLIS: Iestatījumi -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
@@ -567,6 +567,21 @@
       }
     }
 
+    function openDiagnosticModal() {
+      document.getElementById('diagStoreName').innerText = getStoreDisplayName();
+      document.getElementById('diagWorkerName').innerText = getWorkerName();
+      const statusEl = document.getElementById('diagAuthStatus');
+      if (statusEl) {
+        statusEl.innerText = isDeviceApproved ? "✓ Atļauts (Pilna pieeja)" : "🔒 Gaida apstiprinājumu (Viesis)";
+        statusEl.className = isDeviceApproved ? "text-emerald-400 font-bold" : "text-amber-400 font-bold";
+      }
+      document.getElementById('diagnosticModal').classList.remove('hidden');
+    }
+
+    function closeDiagnosticModal() {
+      document.getElementById('diagnosticModal').classList.add('hidden');
+    }
+
     function continueInGuestMode() {
       document.getElementById('pendingApprovalModal').classList.add('hidden');
       updateModesVisibility();
@@ -655,6 +670,7 @@
       }, 3000);
     }
 
+    // PĀRBAUDĪTS: VIENMĒR NOSŪTA DARBINIEKA VĀRDU (PIEM. JĀNIS)
     function sendAuthRequestMqtt() {
       if (!mqttClient || !mqttClient.connected) {
         updateConnectionStatusUI(false);
@@ -662,9 +678,10 @@
       }
       const roomId = getRoomId();
       const deviceId = getDeviceId();
+      const workerName = getWorkerName();
       mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({
         deviceId,
-        workerName: getWorkerName(),
+        workerName,
         requestId: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         time: Date.now()
       }));
@@ -724,11 +741,21 @@
       triggerHaptic('warning');
     }
 
+    // TŪLĪTĒJA STATUSU PĀRBAUDE PAMOSTOTIES
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'hidden') {
         await stopCameraSafely();
       } else if (document.visibilityState === 'visible') {
         requestWakeLock();
+        if (mqttClient && mqttClient.connected) {
+          mqttClient.publish(`ean2026/${getRoomId()}/ping`, JSON.stringify({
+            deviceId: getDeviceId(),
+            workerName: getWorkerName(),
+            approved: isDeviceApproved,
+            broker: mqttConnectedNames().join('+'),
+            time: Date.now()
+          }));
+        }
         setTimeout(() => {
           if (!isCameraRunning && !activeScanData && !isAnyModalOpen() && !isCameraAsleep) {
             startCameraWithSelectedLens();
@@ -957,7 +984,7 @@
 
     let isSyncingQueue = false;
 
-    // === Hibrīdā sakaru vadība (Multi-broker + Wi-Fi PeerJS) ===
+    // === Hibrīdā sakaru vadība (Multi-broker WSS + WebRTC LAN) ===
     let mqttLinks = [];
     let mqttGen = 0;
     let mqttKey = '';
@@ -1050,6 +1077,7 @@
           peer.on('disconnected', () => { if (alive() && p2pPeer === peer && !peer.destroyed) { try { peer.reconnect(); } catch (e) {} } });
           peer.on('error', err => {
             const type = err && err.type;
+            console.warn('P2P kļūda:', type);
             if (type === 'peer-unavailable') return;
             if (alive() && p2pPeer === peer) {
               try { peer.destroy(); } catch (e) {}
@@ -1183,10 +1211,20 @@
               }
               return;
             }
+
+            // TŪLĪTĒJS APSTIPRINĀJUMS: ATJAUNINA PUNKTU ZAĻĀ KRĀSĀ BEZ LOGA AIZVĒRŠANAS!
             if (topic.includes(`/ack/${deviceId}`) && (payload.opId || payload.scanId)) {
+              const targetScanId = payload.scanId || payload.opId;
               await acknowledgeOperation(payload.opId || payload.scanId, payload.scanId);
+              
+              const memItem = recentScansMemory.find(x => x.id === targetScanId || x.id === payload.scanId || x.id === payload.opId);
+              if (memItem) {
+                memItem.synced = true;
+                renderRecentScans();
+              }
               return;
             }
+
             if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
               await saveCatalogBatchToDb(payload.items);
               return;
@@ -1239,7 +1277,14 @@
         tx.oncomplete = res;
         tx.onerror = res;
       });
-      if (scanId) await markScanSyncedInDb(scanId);
+      const targetId = scanId || opId;
+      if (targetId) await markScanSyncedInDb(targetId);
+
+      const memItem = recentScansMemory.find(x => x.id === targetId || x.id === scanId || x.id === opId);
+      if (memItem) {
+        memItem.synced = true;
+        renderRecentScans();
+      }
       updateSyncQueueBadge();
     }
 
@@ -1856,8 +1901,8 @@
 
         const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit' });
         const syncDot = it.synced 
-          ? `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>` 
-          : `<span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>`;
+          ? `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>` 
+          : `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>`;
 
         let badgeHtml = it.mode === 'repricing' 
           ? `<span class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs sm:text-sm">${it.price || '0.00'} €</span>`
@@ -1874,6 +1919,7 @@
       });
     }
 
+    // NOVĒRSTS DAUDZUMA LABOŠANAS BUG: PAREIZI RĀDA GAB / KG, NEVIS €!
     async function openEditModal(scanId) {
       await stopCameraSafely();
       const all = await getAllScansFromDb();
@@ -1890,12 +1936,21 @@
 
       const isRepriceMode = (item.mode === 'repricing');
       const modalTitle = document.getElementById('editModalTitle');
+      const inputLabel = document.getElementById('editInputLabel');
+      const inputUnit = document.getElementById('editInputUnit');
+      const display = document.getElementById('editKeypadDisplay');
 
       if (isRepriceMode) {
         if (modalTitle) modalTitle.innerText = "Labot cenu (€)";
+        if (inputLabel) inputLabel.innerText = "Cena (€):";
+        if (inputUnit) inputUnit.innerText = "€";
+        if (display) display.value = editPriceValue;
         activeEditTarget = 'price';
       } else {
         if (modalTitle) modalTitle.innerText = "Labot daudzumu";
+        if (inputLabel) inputLabel.innerText = "Daudzums:";
+        if (inputUnit) inputUnit.innerText = "gab / kg";
+        if (display) display.value = editQtyValue;
         activeEditTarget = 'qty';
       }
 
