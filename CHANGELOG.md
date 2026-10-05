@@ -4,6 +4,47 @@ Visas nozīmīgās projekta "EAN Studio" izmaiņas un labojumi tiek fiksēti ša
 
 ---
 
+## [2.23] — 2026-10-06
+
+### Funkcionālie un vizuālie jauninājumi (EAN Studio Suite)
+
+#### 1. Mobilais skeneris (`index.html`)
+- **Ātrais / Nepārtrauktais skenēšanas režīms (*Rapid +1*)**:
+  - Ieviests pārslēgšanas taustiņš `⚡ Ātrais +1 / Standarta` galvenajā rīkjoslā.
+  - Inventūras režīmā iespējots nepārtraukts skenēšanas cikls bez daudzuma loga atvēršanās — katrs pīkstiens automātiski reģistrē `+1 gab.`, sinhronizē datus un ļauj uzreiz skenēt nākamo vienību.
+- **Režīmu krāsu kodēšana un vizuālais skenēšanas zibsnis (*Scan Flash*)**:
+  - Katram režīmam piešķirta dinamiska vizuālā identitāte:
+    - *Inventūra*: Smaragda zaļš (`emerald`)
+    - *Cenu zīmes*: Indigo zils (`indigo`)
+    - *Pārcenošana*: Dzintara oranžs (`amber`)
+    - *Cenu pārbaude*: Debess zils (`sky`)
+  - Kameras rāmis, mērķēšanas stūrīši, lāzera stars un paziņojumu lodziņi automātiski pielāgojas aktīvā režīma krāsai.
+  - Skenēšanas fiksācijas brīdī kameras rāmis rada spilgtu impulsa zibsni (`scan-flash` animācija).
+- **Svītrkodu ģenerators un skatītājs katalogā**:
+  - Meklējot preci bāzē, pievienota poga `||||`, kas atver skaidri renderētu vektora svītrkodu (EAN-13 / Code39 SVG formātā bez ārējām bibliotēkām) ērtai nolasīšanai no cita ekrāna.
+- **Ierīces akumulatora diagnostika**:
+  - Ar Battery Status API palīdzību telefona akumulatora uzlādes līmenis automātiski tiek nosūtīts administratora panelim sirdspukstu (*ping*) un autorizācijas ziņojumos.
+
+#### 2. Vadības panelis (`admin.html`)
+- **Inventūras progresa josla (Progress Bar)**:
+  - KPI rādītāju blokā pievienots vizuāls progress: cik procenti un skaits no ielādētās preču bāzes sortimenta jau ir inventarizēts.
+- **Tabulas kompaktuma pārslēgs (*Density toggle*)**:
+  - Poga `Kompakts / Normāls` ļauj samazināt tabulas rindu augstumu un teksta izmēru, nodrošinot ievērojami labāku pārskatāmību uz klēpjdatoriem un lielos datu apjomos.
+- **Automātiska dublikātu apvienošana (*Merge duplicates*)**:
+  - Poga apakšējā joslā `🔗 Apvienot dublikātus` ar 1 klikšķi konsolidē vairākus atsevišķus viena un tā paša EAN koda skenējumus vienā ierakstā ar summētu daudzumu un apvienotu darbinieku/ierīču sarakstu.
+- **Starpību un iztrūkumu audits (*Variance & Stock check*)**:
+  - Atbalstīta 4. kolonna preču katalogā (`atlikums`). Tabulā blakus saskaitītajam daudzumam tiek parādīts bāzes atlikums un starpība (zaļš pārpalikums / sarkans iztrūkums).
+  - Filtros pievienota opcija `📊 Ar starpībām / iztrūkumu`.
+- **Cenu zīmju tiešā druka uz A4 lapas**:
+  - Cilnē "Cenu zīmes" poga `🖨️ Drukāt cenu zīmes` sagatavo profesionālas veikala plauktu cenu zīmes (preces nosaukums, lielā cena, vektora svītrkods, EAN un datums) un atver pārlūka drukas logu.
+- **Fona automātiskā rezerves kopēšana (*Auto-save interval*)**:
+  - Automātisks fona taimeris ik pēc 2 minūtēm klusi saglabā inventūras stāvokli gan lokālajā atmiņā, gan `session_backup.json` failā ar laika zīmogu apakšējā joslā.
+- **Skeneru akumulatora uzraudzība**:
+  - Ierīču pārvaldniekā un darbinieku kartītēs tiek attēlots katra pievienotā tālruņa baterijas līmenis (piem., `🔋 85%`).
+
+---
+
+
 ## [2.22] — 2026-10-06
 
 ### Labojumi un vizuālie uzlabojumi (admin.html)

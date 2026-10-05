@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.21</title>
+  <title>EAN Skeneris Pro V2.23</title>
 
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,6 +38,7 @@
       position: absolute; left: 0; right: 0; top: 0; height: 3px; background: #10b981;
       box-shadow: 0 0 16px 4px rgba(16, 185, 129, 0.95); will-change: transform;
       animation: scanLaserGPU 1.5s ease-in-out infinite alternate;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
     }
     @keyframes scanLaserGPU {
       0% { transform: translate3d(0, 4px, 0); opacity: 0.7; }
@@ -47,6 +48,14 @@
     .numbtn:active { transform: scale(0.92); background-color: rgba(255, 255, 255, 0.25); }
     .smooth-scroll-list { -webkit-overflow-scrolling: touch; contain: content; }
     .neon-pulse-emerald { box-shadow: 0 0 10px 1px rgba(16, 185, 129, 0.8); }
+
+    @keyframes scanFlashGPU {
+      0% { box-shadow: inset 0 0 0 4px var(--flash-color, #10b981), 0 0 25px var(--flash-glow, rgba(16, 185, 129, 0.85)); }
+      100% { box-shadow: inset 0 0 0 0 transparent, 0 0 0 transparent; }
+    }
+    .scan-flash {
+      animation: scanFlashGPU 0.35s ease-out forwards;
+    }
   </style>
 </head>
 <body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
@@ -95,13 +104,13 @@
 
   <!-- Kameras Bloks -->
   <main class="flex-1 flex flex-col px-3 py-1 gap-2 overflow-hidden relative">
-    <div class="relative w-full aspect-[4/3] max-h-[27vh] bg-black rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex items-center justify-center">
+    <div id="cameraBoxContainer" class="relative w-full aspect-[4/3] max-h-[27vh] bg-black rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex items-center justify-center transition-all">
       <div id="reader" class="w-full h-full"></div>
       <div class="laser-viewport" id="laserContainer"><div id="scanLaserLine" class="scanner-laser-line"></div></div>
 
-      <div class="absolute inset-x-10 inset-y-5 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
-        <div class="flex justify-between"><span class="w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-400"></span><span class="w-3.5 h-3.5 border-t-2 border-r-2 border-emerald-400"></span></div>
-        <div class="flex justify-between"><span class="w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-400"></span><span class="w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-400"></span></div>
+      <div id="cameraReticle" class="absolute inset-x-10 inset-y-5 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2 transition-colors">
+        <div class="flex justify-between"><span class="reticle-corner w-3.5 h-3.5 border-t-2 border-l-2 border-emerald-400"></span><span class="reticle-corner w-3.5 h-3.5 border-t-2 border-r-2 border-emerald-400"></span></div>
+        <div class="flex justify-between"><span class="reticle-corner w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-400"></span><span class="reticle-corner w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-400"></span></div>
       </div>
 
       <div id="cameraSleepOverlay" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-4 z-30">
@@ -124,15 +133,19 @@
       </div>
     </div>
 
-    <!-- Pamatpogas -->
-    <div class="grid grid-cols-2 gap-2 w-full">
-      <button type="button" onclick="openManualEanModal()" class="py-3 px-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg border border-emerald-400/30 flex items-center justify-center gap-2 transition">
-        <span class="text-base sm:text-lg">⌨</span>
-        <span class="uppercase font-mono tracking-tight">Kods ar roku</span>
+    <!-- Pamatpogas un režīma slēdži -->
+    <div class="grid grid-cols-3 gap-2 w-full">
+      <button type="button" onclick="openManualEanModal()" class="py-2.5 px-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-2xl shadow-lg border border-emerald-400/30 flex items-center justify-center gap-1.5 transition">
+        <span class="text-base">⌨</span>
+        <span class="uppercase font-mono tracking-tight text-[11px] truncate">Kods</span>
       </button>
-      <button type="button" onclick="openCatalogSearchModal()" class="py-3 px-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-lg border border-indigo-400/30 flex items-center justify-center gap-2 transition">
-        <span class="text-base sm:text-lg">🔍</span>
-        <span class="uppercase font-mono tracking-tight">Meklēt bāzē</span>
+      <button type="button" onclick="openCatalogSearchModal()" class="py-2.5 px-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-2xl shadow-lg border border-indigo-400/30 flex items-center justify-center gap-1.5 transition">
+        <span class="text-base">🔍</span>
+        <span class="uppercase font-mono tracking-tight text-[11px] truncate">Meklēt</span>
+      </button>
+      <button type="button" id="rapidScanToggleBtn" onclick="toggleRapidScanMode()" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition" title="Ātrais +1 skenēšanas režīms bez daudzuma loga">
+        <span class="text-base" id="rapidScanIcon">⚡</span>
+        <span class="uppercase font-mono tracking-tight text-[11px] truncate" id="rapidScanLabel">Normāls</span>
       </button>
     </div>
 
@@ -242,6 +255,29 @@
       </div>
     </div>
   </div>
+  <!-- MODĀLIS: Svītrkoda ģenerators un skatītājs -->
+  <div id="barcodeDisplayModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-5 space-y-4 shadow-2xl text-center">
+      <div class="flex items-center justify-between pb-2 border-b border-white/10">
+        <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-1.5">
+          <span>||||</span> <span>Svītrkods ekrānā</span>
+        </h3>
+        <button type="button" onclick="closeBarcodeModal()" class="w-8 h-8 rounded-xl bg-white/10 text-slate-300 flex items-center justify-center font-bold">✕</button>
+      </div>
+      <div>
+        <p id="barcodeModalItemName" class="text-sm font-bold text-white truncate">Preces nosaukums</p>
+        <p id="barcodeModalItemPrice" class="text-xs font-mono text-emerald-400 font-bold mt-0.5">0.00 €</p>
+      </div>
+      <div class="bg-white p-4 rounded-2xl flex flex-col items-center justify-center shadow-inner">
+        <div id="barcodeSvgContainer" class="w-full flex justify-center overflow-hidden"></div>
+        <p id="barcodeModalEanCode" class="text-base font-mono font-bold text-black tracking-widest mt-2.5">0000000000000</p>
+      </div>
+      <button type="button" onclick="closeBarcodeModal()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-xs uppercase font-mono shadow-lg active:scale-95 transition">
+        Aizvērt
+      </button>
+    </div>
+  </div>
+
 
   <!-- MODĀLIS: Koda ievade ar roku -->
   <div id="manualEanModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
@@ -484,7 +520,128 @@
     let appMode = localStorage.getItem('ean_app_mode') || 'inventory';
     let isSoundEnabled = localStorage.getItem('ean_sound_enabled') !== 'false';
     let isPricePromptEnabled = localStorage.getItem('ean_price_prompt') === 'true';
+    let isRapidScanEnabled = localStorage.getItem('ean_rapid_scan') === 'true';
     const OUTBOX_STORE = 'outbox';
+
+    function toggleRapidScanMode() {
+      isRapidScanEnabled = !isRapidScanEnabled;
+      localStorage.setItem('ean_rapid_scan', isRapidScanEnabled ? 'true' : 'false');
+      updateRapidScanUI();
+      if (isRapidScanEnabled) {
+        playAudioTone('success');
+        triggerHaptic('short');
+      }
+    }
+
+    function updateRapidScanUI() {
+      const btn = document.getElementById('rapidScanToggleBtn');
+      const label = document.getElementById('rapidScanLabel');
+      const icon = document.getElementById('rapidScanIcon');
+      if (!btn || !label || !icon) return;
+      if (isRapidScanEnabled) {
+        btn.className = "py-2.5 px-2 bg-amber-500 text-black font-bold text-xs rounded-2xl shadow-lg border border-amber-300 flex items-center justify-center gap-1.5 transition active:scale-95";
+        label.innerText = "Ātrais +1";
+        icon.innerText = "⚡";
+      } else {
+        btn.className = "py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition";
+        label.innerText = "Standarta";
+        icon.innerText = "⏱️";
+      }
+    }
+
+    function triggerScanFlash() {
+      const frame = document.getElementById('cameraBoxContainer');
+      if (frame) {
+        frame.classList.remove('scan-flash');
+        void frame.offsetWidth;
+        frame.classList.add('scan-flash');
+      }
+    }
+
+    async function getBatteryInfo() {
+      if (typeof navigator !== 'undefined' && 'getBattery' in navigator) {
+        try {
+          const b = await navigator.getBattery();
+          return { level: Math.round(b.level * 100), charging: b.charging };
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    function generateBarcodeSvg(code, options = {}) {
+      const width = options.width || 240;
+      const height = options.height || 64;
+      const clean = String(code || '').trim();
+      let bits = '';
+      const isEan13 = /^\d{12,13}$/.test(clean);
+      if (isEan13) {
+        let digits = clean.slice(0, 12);
+        if (clean.length === 12) {
+          let sum = 0;
+          for (let i = 0; i < 12; i++) {
+            sum += parseInt(digits[i]) * (i % 2 === 0 ? 1 : 3);
+          }
+          digits += (10 - (sum % 10)) % 10;
+        } else {
+          digits = clean.slice(0, 13);
+        }
+        const L = ["0001101", "0011001", "0010011", "0111101", "0100011", "0110001", "0101111", "0111011", "0110111", "0001011"];
+        const G = ["0100111", "0110011", "0011011", "0100001", "0011101", "0111001", "0000101", "0010001", "0001001", "0010111"];
+        const R = ["1110010", "1100110", "1101100", "1000010", "1011100", "1001110", "1010000", "1000100", "1001000", "1110100"];
+        const P = ["LLLLLL", "LLGLGG", "LLGGLG", "LLGGGL", "LGLLGG", "LGGLLG", "LGGGLL", "LGLGLG", "LGLGGL", "LGGLGL"];
+        const first = parseInt(digits[0]);
+        const parity = P[first];
+        bits = '101';
+        for (let i = 1; i <= 6; i++) {
+          const d = parseInt(digits[i]);
+          bits += (parity[i - 1] === 'L') ? L[d] : G[d];
+        }
+        bits += '01010';
+        for (let i = 7; i <= 12; i++) {
+          const d = parseInt(digits[i]);
+          bits += R[d];
+        }
+        bits += '101';
+      } else {
+        const CODE39 = {
+          '0':'000110100','1':'100100001','2':'001100001','3':'101100000','4':'000110001','5':'100110000',
+          '6':'001110000','7':'000100101','8':'100100100','9':'001100100','A':'100001001','B':'001001001',
+          'C':'101001000','D':'000011001','E':'100011000','F':'001011000','G':'000001101','H':'100001100',
+          'I':'001001100','J':'000011100','-':'010000101','.':'110000100',' ':'011000000','*':'010010100'
+        };
+        const str = '*' + (clean.toUpperCase().replace(/[^0-9A-Z\-\. ]/g, '') || '0') + '*';
+        for (let char of str) {
+          const pat = CODE39[char] || CODE39['-'];
+          for (let i = 0; i < pat.length; i++) {
+            bits += pat[i] === '1' ? '11' : '1';
+            bits += '0';
+          }
+        }
+      }
+      const totalBars = bits.length;
+      const barWidth = width / totalBars;
+      let rects = '';
+      for (let i = 0; i < totalBars; i++) {
+        if (bits[i] === '1') {
+          const x = (i * barWidth).toFixed(2);
+          const w = barWidth.toFixed(2);
+          rects += `<rect x="${x}" y="0" width="${w}" height="${height}" fill="#000000"/>`;
+        }
+      }
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="max-width:100%;height:auto;display:block;margin:0 auto;background:#ffffff;">${rects}</svg>`;
+    }
+
+    function showBarcodeModal(ean, name, price) {
+      document.getElementById('barcodeModalItemName').innerText = decodeURIComponent(name);
+      document.getElementById('barcodeModalItemPrice').innerText = `${price} €`;
+      document.getElementById('barcodeModalEanCode').innerText = ean;
+      document.getElementById('barcodeSvgContainer').innerHTML = generateBarcodeSvg(ean, { width: 280, height: 75 });
+      document.getElementById('barcodeDisplayModal').classList.remove('hidden');
+    }
+
+    function closeBarcodeModal() {
+      document.getElementById('barcodeDisplayModal').classList.add('hidden');
+    }
 
     function updateModesVisibility() {
       const lockInv = document.getElementById('lockIcon_inventory');
@@ -551,12 +708,50 @@
         pricecheck: document.getElementById('modeBtn_pricecheck')
       };
 
+      const activeColorClasses = {
+        inventory: "py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1",
+        labels: "py-2 font-bold rounded-xl transition bg-indigo-600 text-white shadow-xs flex items-center justify-center gap-1",
+        repricing: "py-2 font-bold rounded-xl transition bg-amber-600 text-white shadow-xs flex items-center justify-center gap-1",
+        pricecheck: "py-2 font-bold rounded-xl transition bg-sky-600 text-white shadow-xs flex items-center justify-center gap-1"
+      };
+
       Object.keys(btns).forEach(k => {
         if (!btns[k]) return;
         btns[k].className = k === appMode 
-          ? "py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1"
+          ? (activeColorClasses[k] || activeColorClasses.inventory)
           : "py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1";
       });
+
+      const laser = document.getElementById('scanLaserLine');
+      const reticle = document.getElementById('cameraReticle');
+      const corners = document.querySelectorAll('.reticle-corner');
+      const root = document.documentElement;
+
+      if (appMode === 'inventory') {
+        if (laser) { laser.style.background = '#10b981'; laser.style.boxShadow = '0 0 16px 4px rgba(16, 185, 129, 0.95)'; }
+        if (reticle) reticle.className = 'absolute inset-x-10 inset-y-5 border-2 border-emerald-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2 transition-colors';
+        corners.forEach(c => { c.className = 'reticle-corner w-3.5 h-3.5 border-emerald-400 ' + c.className.split(' ').filter(x => x.startsWith('border-t') || x.startsWith('border-b') || x.startsWith('border-l') || x.startsWith('border-r')).join(' '); });
+        root.style.setProperty('--flash-color', '#10b981');
+        root.style.setProperty('--flash-glow', 'rgba(16, 185, 129, 0.85)');
+      } else if (appMode === 'labels') {
+        if (laser) { laser.style.background = '#6366f1'; laser.style.boxShadow = '0 0 16px 4px rgba(99, 102, 241, 0.95)'; }
+        if (reticle) reticle.className = 'absolute inset-x-10 inset-y-5 border-2 border-indigo-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2 transition-colors';
+        corners.forEach(c => { c.className = 'reticle-corner w-3.5 h-3.5 border-indigo-400 ' + c.className.split(' ').filter(x => x.startsWith('border-t') || x.startsWith('border-b') || x.startsWith('border-l') || x.startsWith('border-r')).join(' '); });
+        root.style.setProperty('--flash-color', '#6366f1');
+        root.style.setProperty('--flash-glow', 'rgba(99, 102, 241, 0.85)');
+      } else if (appMode === 'repricing') {
+        if (laser) { laser.style.background = '#f59e0b'; laser.style.boxShadow = '0 0 16px 4px rgba(245, 158, 11, 0.95)'; }
+        if (reticle) reticle.className = 'absolute inset-x-10 inset-y-5 border-2 border-amber-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2 transition-colors';
+        corners.forEach(c => { c.className = 'reticle-corner w-3.5 h-3.5 border-amber-400 ' + c.className.split(' ').filter(x => x.startsWith('border-t') || x.startsWith('border-b') || x.startsWith('border-l') || x.startsWith('border-r')).join(' '); });
+        root.style.setProperty('--flash-color', '#f59e0b');
+        root.style.setProperty('--flash-glow', 'rgba(245, 158, 11, 0.85)');
+      } else {
+        if (laser) { laser.style.background = '#0ea5e9'; laser.style.boxShadow = '0 0 16px 4px rgba(14, 165, 233, 0.95)'; }
+        if (reticle) reticle.className = 'absolute inset-x-10 inset-y-5 border-2 border-sky-500/40 rounded-2xl pointer-events-none flex flex-col justify-between p-2 transition-colors';
+        corners.forEach(c => { c.className = 'reticle-corner w-3.5 h-3.5 border-sky-400 ' + c.className.split(' ').filter(x => x.startsWith('border-t') || x.startsWith('border-b') || x.startsWith('border-l') || x.startsWith('border-r')).join(' '); });
+        root.style.setProperty('--flash-color', '#0ea5e9');
+        root.style.setProperty('--flash-glow', 'rgba(14, 165, 233, 0.85)');
+      }
 
       const titleEl = document.getElementById('listTitleLabel');
       if (titleEl) {
@@ -671,7 +866,7 @@
     }
 
     // PĀRBAUDĪTS: VIENMĒR NOSŪTA DARBINIEKA VĀRDU (PIEM. JĀNIS)
-    function sendAuthRequestMqtt() {
+    async function sendAuthRequestMqtt() {
       if (!mqttClient || !mqttClient.connected) {
         updateConnectionStatusUI(false);
         return false;
@@ -679,9 +874,11 @@
       const roomId = getRoomId();
       const deviceId = getDeviceId();
       const workerName = getWorkerName();
+      const batt = await getBatteryInfo();
       mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({
         deviceId,
         workerName,
+        battery: batt ? batt.level : null,
         requestId: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         time: Date.now()
       }));
@@ -1155,13 +1352,15 @@
         `ean2026/${roomId}/price_update`, `ean2026/${roomId}/auth_setting`
       ];
 
-      const heartbeat = () => {
+      const heartbeat = async () => {
         if (mqttClient && mqttClient.connected) {
+          const batt = await getBatteryInfo();
           mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({
             deviceId,
             workerName: getWorkerName(),
             approved: isDeviceApproved,
             broker: mqttConnectedNames().join('+'),
+            battery: batt ? batt.level : null,
             time: Date.now()
           }));
         }
@@ -1476,6 +1675,8 @@
       const name = item ? item.nosaukums : 'Nezināma prece';
       const basePriceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
 
+      triggerScanFlash();
+
       if (!isDeviceApproved || appMode === 'pricecheck') {
         isScanCooldown = true;
         lastScannedCode = cleanEan;
@@ -1533,6 +1734,43 @@
       if (appMode === 'repricing') {
         isScanCooldown = true;
         openQtyModalVariantsB(cleanEan, name, basePriceEur, !item, 'price');
+        return;
+      }
+
+      // Režīms: Inventūra ar ieslēgtu ātro +1 skenēšanu
+      if (appMode === 'inventory' && isRapidScanEnabled) {
+        isScanCooldown = true;
+        lastScannedCode = cleanEan;
+        lastScannedTime = now;
+        playAudioTone(item ? 'success' : 'warning');
+        triggerHaptic('short');
+        showScanToast(name, cleanEan, basePriceEur, 1);
+
+        const record = {
+          id: 'inv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+          deviceId: getDeviceId(),
+          workerName: getWorkerName(),
+          allowInventoryPriceEdit: isPricePromptEnabled,
+          ean: cleanEan,
+          name: name,
+          basePrice: basePriceEur,
+          price: basePriceEur,
+          qty: 1,
+          isUnknown: !item,
+          photos: [],
+          photoBase64: null,
+          mode: 'inventory',
+          timestamp: Date.now(),
+          synced: false
+        };
+
+        recentScansMemory.unshift(record);
+        if (recentScansMemory.length > 20) recentScansMemory.pop();
+        renderRecentScans();
+        await saveScanToDb(record);
+        sendScanToMqtt(record);
+        updateSyncQueueBadge();
+        setTimeout(() => { isScanCooldown = false; }, 900);
         return;
       }
 
@@ -1624,7 +1862,12 @@
             <p class="text-sm font-bold text-white truncate">${it.nosaukums}</p>
             <p class="text-xs font-mono text-slate-400 mt-0.5">${it.ean}</p>
           </div>
-          <span class="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 font-mono font-bold text-sm shrink-0">${priceEur} €</span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 font-mono font-bold text-xs">${priceEur} €</span>
+            <button type="button" onclick="event.stopPropagation(); showBarcodeModal('${it.ean}', '${encodeURIComponent(it.nosaukums)}', '${priceEur}')" class="p-1.5 px-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-slate-200 text-xs font-mono flex items-center justify-center border border-white/10" title="Rādīt svītrkodu ekrānā">
+              <span class="font-bold tracking-tighter">||||</span>
+            </button>
+          </div>
         `;
         resultsContainer.appendChild(div);
       });
@@ -2128,6 +2371,7 @@
 
       checkWorkerSessionOnStartup();
       updateModesVisibility();
+      updateRapidScanUI();
       resetActivityTimer();
 
       setInterval(() => {
