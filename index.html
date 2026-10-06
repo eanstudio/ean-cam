@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.25</title>
+  <title>EAN Skeneris Pro V2.26</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -140,6 +140,17 @@
         <span class="text-3xl text-emerald-400 mb-1">✓</span>
         <p class="text-sm font-bold text-emerald-400 font-mono">Kods fiksēts</p>
       </div>
+
+      <div id="cameraManualOverlay" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center text-center p-3 z-40">
+        <span class="text-3xl text-slate-400 mb-1">📷</span>
+        <p class="text-sm font-bold text-white font-mono">Kamera izslēgta</p>
+        <p class="text-xs text-slate-400 mt-1">Ieslēdz kameru, lai turpinātu skenēt.</p>
+      </div>
+
+      <button type="button" id="cameraPowerBtn" onclick="toggleCameraPower()" class="absolute bottom-2 right-2 z-50 h-9 px-3 rounded-xl bg-slate-900/90 border border-white/20 text-xs font-bold text-white shadow-lg backdrop-blur-sm active:scale-95 transition flex items-center gap-1.5" aria-label="Izslēgt kameru" aria-pressed="true">
+        <span id="cameraPowerIcon">⏻</span>
+        <span id="cameraPowerLabel">Kamera ieslēgta</span>
+      </button>
 
       <div id="toastScanOverlay" class="hidden absolute inset-x-3 top-3 bg-emerald-600/95 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between z-40 transition transform">
         <div class="truncate flex-1 pr-2">
@@ -438,46 +449,54 @@
 
   <!-- MODĀLIS: Iestatījumi -->
   <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-md bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between pb-2 border-b border-white/10">
-        <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wider">Iestatījumi</h3>
-        <button type="button" onclick="closeSettingsModal()" class="text-slate-400 p-1 text-lg font-bold">✕</button>
+    <div class="w-full max-w-md max-h-[90vh] overflow-y-auto bg-slate-900 border border-white/10 rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-white/10">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-400/20 text-emerald-300 flex items-center justify-center text-lg">⚙️</span>
+          <div>
+            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wider">Iestatījumi</h3>
+            <p class="text-[11px] text-slate-400 mt-0.5">Lietotnes un ierīces preferences</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeSettingsModal()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white text-base font-bold transition">✕</button>
       </div>
 
-      <div class="space-y-3.5 text-xs sm:text-sm">
-        <div>
-          <label class="block uppercase font-bold text-slate-400 font-mono mb-1">Darbinieks / Ierīce:</label>
-          <input type="text" id="settingDeviceId" class="w-full h-12 px-3.5 bg-black/50 border border-white/15 rounded-xl text-white font-mono text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
-        </div>
-        <div>
-          <label class="block uppercase font-bold text-slate-400 font-mono mb-1">Veikala nosaukums:</label>
-          <input type="text" id="settingRoomId" class="w-full h-12 px-3.5 bg-black/50 border border-white/15 rounded-xl text-white font-mono text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
-        </div>
-        <div>
-          <label class="block uppercase font-bold text-slate-400 font-mono mb-1">Izvēlētā kamera:</label>
-          <select id="cameraSelectDropdown" onchange="onCameraSelectedFromDropdown(this.value)" class="w-full h-12 px-3.5 bg-black/50 border border-white/15 rounded-xl text-white font-mono text-xs sm:text-sm focus:outline-none"></select>
-        </div>
-        <div class="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-2xl">
+      <div class="space-y-2.5 text-xs sm:text-sm">
+        <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
           <div>
+            <label class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Darbinieks / Ierīce</label>
+            <input type="text" id="settingDeviceId" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
+          </div>
+          <div>
+            <label class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Veikala nosaukums</label>
+            <input type="text" id="settingRoomId" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
+          </div>
+        </div>
+        <div class="p-3 rounded-2xl bg-white/5 border border-white/10">
+          <label class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Izvēlētā kamera</label>
+          <select id="cameraSelectDropdown" onchange="onCameraSelectedFromDropdown(this.value)" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"></select>
+        </div>
+        <div class="flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl">
+          <div class="min-w-0">
             <p class="font-bold text-white">Norādīt / mainīt cenu</p>
             <p class="text-xs text-slate-400">Inventūras režīmā</p>
           </div>
-          <input type="checkbox" id="settingPricePromptToggle" onchange="togglePricePromptSetting(this.checked)" class="w-6 h-6 rounded-lg text-emerald-600 focus:ring-emerald-500">
+          <input type="checkbox" id="settingPricePromptToggle" onchange="togglePricePromptSetting(this.checked)" class="w-5 h-5 shrink-0 rounded-lg accent-emerald-500 focus:ring-emerald-500">
         </div>
-        <div class="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-2xl">
-          <div>
-            <p class="font-bold text-white">Skaņas signāls (Pīkstiens)</p>
-            <p class="text-xs text-slate-400">Izslēdziet, ja strādājat tirdzniecības zālē</p>
+        <div class="flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl">
+          <div class="min-w-0">
+            <p class="font-bold text-white">Skaņas signāls</p>
+            <p class="text-xs text-slate-400">Izslēdz, ja strādā tirdzniecības zālē</p>
           </div>
-          <input type="checkbox" id="settingSoundToggle" onchange="toggleSoundSetting(this.checked)" class="w-6 h-6 rounded-lg text-emerald-600 focus:ring-emerald-500">
+          <input type="checkbox" id="settingSoundToggle" onchange="toggleSoundSetting(this.checked)" class="w-5 h-5 shrink-0 rounded-lg accent-emerald-500 focus:ring-emerald-500">
         </div>
-        <div class="pt-2 border-t border-white/5 space-y-2">
-          <button type="button" onclick="manualSync()" class="w-full h-12 rounded-2xl bg-white/10 text-xs sm:text-sm font-semibold text-slate-200 active:scale-95 transition">Piespiedu sinhronizācija 🔄</button>
-          <button type="button" onclick="clearCatalogData()" class="w-full h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs sm:text-sm font-semibold text-red-400 active:scale-95 transition">Iztīrīt preču bāzi 🗑️</button>
+        <div class="pt-3 border-t border-white/10 space-y-2">
+          <button type="button" onclick="manualSync()" class="w-full h-11 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-xs sm:text-sm font-semibold text-slate-200 active:scale-[0.99] transition">Piespiedu sinhronizācija 🔄</button>
+          <button type="button" onclick="clearCatalogData()" class="w-full h-11 rounded-2xl bg-red-500/10 border border-red-500/20 text-xs sm:text-sm font-semibold text-red-400 active:scale-[0.99] transition">Iztīrīt preču bāzi 🗑️</button>
         </div>
       </div>
 
-      <button type="button" onclick="saveSettings()" class="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm transition active:scale-95 shadow-lg shadow-emerald-600/30">
+      <button type="button" onclick="saveSettings()" class="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/30 text-white font-bold text-sm transition active:scale-[0.99] shadow-lg shadow-emerald-600/20">
         Saglabāt un aizvērt ✓
       </button>
     </div>
@@ -493,6 +512,7 @@
     let activeScanData = null;
     let currentEditScanId = null;
     let isCameraRunning = false;
+    let isCameraManuallyDisabled = localStorage.getItem('ean_camera_enabled') === 'false';
     let wakeLock = null;
 
     let currentScanPhotos = [];
@@ -1271,53 +1291,61 @@
         const catalogStore = tx.objectStore('catalog');
         const transfersStore = tx.objectStore('catalogTransfers');
         transfersStore.put({ key: `${transferId}:${chunkIndex}`, transferId, chunkIndex, totalChunks, totalItems: payload.totalItems, items, sourceModifiedAt, sourceDate, receivedAt: Date.now() });
-        const expiredBefore = Date.now() - 24 * 60 * 60 * 1000;
-        const cleanupRequest = transfersStore.getAll();
-        cleanupRequest.onsuccess = () => {
-          cleanupRequest.result.forEach(chunk => {
-            if (chunk.receivedAt < expiredBefore) transfersStore.delete(chunk.key);
-          });
-        };
-        const request = transfersStore.index('transferId').getAll(transferId);
-        request.onsuccess = () => {
-          const chunks = request.result || [];
-          const uniqueChunks = new Map(chunks.map(chunk => [chunk.chunkIndex, chunk]));
-          const receivedCount = uniqueChunks.size;
+        if (chunkIndex === 0 && payload.attempt === 0) {
+          const expiredBefore = Date.now() - 24 * 60 * 60 * 1000;
+          const cleanupRequest = transfersStore.getAll();
+          cleanupRequest.onsuccess = () => {
+            cleanupRequest.result.forEach(chunk => {
+              if (chunk.receivedAt < expiredBefore) transfersStore.delete(chunk.key);
+            });
+          };
+        }
+        const transfersIndex = transfersStore.index('transferId');
+        const countRequest = transfersIndex.count(transferId);
+        countRequest.onsuccess = () => {
+          const receivedCount = countRequest.result;
           const progress = document.getElementById('catalogSyncStatus');
           if (progress && receivedCount < totalChunks) {
             progress.innerText = `Saņem bāzi: ${receivedCount} no ${totalChunks} daļām`;
           }
-          if (
-            receivedCount !== totalChunks ||
-            Array.from(uniqueChunks.values()).some(chunk =>
-              chunk.totalChunks !== totalChunks ||
-              chunk.totalItems !== payload.totalItems ||
-              chunk.sourceModifiedAt !== sourceModifiedAt ||
-              chunk.sourceDate !== sourceDate
-            )
-          ) return;
+          if (receivedCount < totalChunks) return;
 
-          const nextCatalog = new Map();
-          for (let index = 0; index < totalChunks; index++) {
-            const chunk = uniqueChunks.get(index);
-            if (!chunk) return;
-            for (const item of chunk.items) {
-              if (!item || typeof item.ean !== 'string' || !item.ean.trim() || typeof item.nosaukums !== 'string' || !item.nosaukums.trim() || nextCatalog.has(item.ean)) {
-                tx.abort();
-                return;
+          const request = transfersIndex.getAll(transferId);
+          request.onsuccess = () => {
+            const chunks = request.result || [];
+            const uniqueChunks = new Map(chunks.map(chunk => [chunk.chunkIndex, chunk]));
+            if (
+              uniqueChunks.size !== totalChunks ||
+              Array.from(uniqueChunks.values()).some(chunk =>
+                chunk.totalChunks !== totalChunks ||
+                chunk.totalItems !== payload.totalItems ||
+                chunk.sourceModifiedAt !== sourceModifiedAt ||
+                chunk.sourceDate !== sourceDate
+              )
+            ) return;
+
+            const nextCatalog = new Map();
+            for (let index = 0; index < totalChunks; index++) {
+              const chunk = uniqueChunks.get(index);
+              if (!chunk) return;
+              for (const item of chunk.items) {
+                if (!item || typeof item.ean !== 'string' || !item.ean.trim() || typeof item.nosaukums !== 'string' || !item.nosaukums.trim() || nextCatalog.has(item.ean)) {
+                  tx.abort();
+                  return;
+                }
+                nextCatalog.set(item.ean, item);
               }
-              nextCatalog.set(item.ean, item);
             }
-          }
-          if (!nextCatalog.size || nextCatalog.size !== payload.totalItems) {
-            tx.abort();
-            return;
-          }
+            if (!nextCatalog.size || nextCatalog.size !== payload.totalItems) {
+              tx.abort();
+              return;
+            }
 
-          catalogStore.clear();
-          nextCatalog.forEach(item => catalogStore.put(item));
-          chunks.forEach(chunk => transfersStore.delete(chunk.key));
-          completedCatalog = nextCatalog;
+            catalogStore.clear();
+            nextCatalog.forEach(item => catalogStore.put(item));
+            chunks.forEach(chunk => transfersStore.delete(chunk.key));
+            completedCatalog = nextCatalog;
+          };
         };
         tx.oncomplete = () => {
           if (!completedCatalog) {
@@ -1826,6 +1854,7 @@
           currentCameraIndex = preferredIndex !== -1 ? preferredIndex : 0;
           populateCameraDropdown();
         }
+        updateCameraControlUI();
         await startCameraWithSelectedLens();
       } catch (err) { await startCameraFallback(); }
     }
@@ -1865,10 +1894,11 @@
         try { if (html5QrScanner.isScanning) await html5QrScanner.stop(); } catch (e) {}
       }
       cameraTrack = null;
+      document.getElementById('scanLaserLine')?.classList.add('hidden');
     }
 
     async function startCameraWithSelectedLens() {
-      if (isAnyModalOpen() || isCameraAsleep) return;
+      if (isCameraManuallyDisabled || isAnyModalOpen() || isCameraAsleep) return;
       await stopCameraSafely();
 
       if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
@@ -1883,8 +1913,10 @@
       try {
         await html5QrScanner.start(cameraConfig, scanConfig, onBarcodeDetected, () => {});
         isCameraRunning = true;
+        updateCameraControlUI();
         document.getElementById('cameraPausedOverlay').classList.add('hidden');
         document.getElementById('cameraSleepOverlay').classList.add('hidden');
+        document.getElementById('cameraManualOverlay').classList.add('hidden');
         document.getElementById('scanLaserLine').classList.remove('hidden');
 
         setTimeout(async () => {
@@ -1897,6 +1929,7 @@
     }
 
     async function startCameraFallback() {
+      if (isCameraManuallyDisabled) return;
       try {
         await stopCameraSafely();
         if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
@@ -1905,9 +1938,41 @@
           : { fps: 20, qrbox: { width: 260, height: 160 } };
         await html5QrScanner.start({ facingMode: "environment" }, scanConfig, onBarcodeDetected, () => {});
         isCameraRunning = true;
+        updateCameraControlUI();
         document.getElementById('cameraPausedOverlay').classList.add('hidden');
+        document.getElementById('cameraManualOverlay').classList.add('hidden');
         document.getElementById('scanLaserLine').classList.remove('hidden');
       } catch (e) {}
+    }
+
+    async function toggleCameraPower() {
+      isCameraManuallyDisabled = !isCameraManuallyDisabled;
+      localStorage.setItem('ean_camera_enabled', isCameraManuallyDisabled ? 'false' : 'true');
+      updateCameraControlUI();
+      if (isCameraManuallyDisabled) {
+        await stopCameraSafely();
+        document.getElementById('cameraManualOverlay').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('cameraManualOverlay').classList.add('hidden');
+      isCameraAsleep = false;
+      document.getElementById('cameraSleepOverlay').classList.add('hidden');
+      await startCameraWithSelectedLens();
+    }
+
+    function updateCameraControlUI() {
+      const button = document.getElementById('cameraPowerBtn');
+      const label = document.getElementById('cameraPowerLabel');
+      const overlay = document.getElementById('cameraManualOverlay');
+      if (!button || !label || !overlay) return;
+      const enabled = !isCameraManuallyDisabled;
+      label.innerText = enabled ? 'Kamera ieslēgta' : 'Ieslēgt kameru';
+      button.setAttribute('aria-label', enabled ? 'Izslēgt kameru' : 'Ieslēgt kameru');
+      button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+      button.className = enabled
+        ? 'absolute bottom-2 right-2 z-50 h-9 px-3 rounded-xl bg-slate-900/90 border border-white/20 text-xs font-bold text-white shadow-lg backdrop-blur-sm active:scale-95 transition flex items-center gap-1.5'
+        : 'absolute bottom-2 right-2 z-50 h-9 px-3 rounded-xl bg-emerald-600 border border-emerald-400/30 text-xs font-bold text-white shadow-lg active:scale-95 transition flex items-center gap-1.5';
+      overlay.classList.toggle('hidden', enabled);
     }
 
     function pauseCamera() {
@@ -1955,6 +2020,7 @@
 
     async function startStoreQrScan() {
       if (isProcessingStoreQr) return;
+      if (isCameraManuallyDisabled) await toggleCameraPower();
       isScanningStoreQr = true;
       isCameraAsleep = false;
       document.getElementById('cameraSleepOverlay').classList.add('hidden');
@@ -2786,6 +2852,7 @@
       checkWorkerSessionOnStartup();
       updateModesVisibility();
       updateRapidScanUI();
+      updateCameraControlUI();
       resetActivityTimer();
 
       setInterval(() => {
