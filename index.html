@@ -116,6 +116,16 @@
         <div class="flex justify-between"><span class="reticle-corner w-3.5 h-3.5 border-b-2 border-l-2 border-emerald-400"></span><span class="reticle-corner w-3.5 h-3.5 border-b-2 border-r-2 border-emerald-400"></span></div>
       </div>
 
+      <div id="storeQrScanOverlay" class="hidden absolute inset-x-3 top-3 z-40 bg-indigo-950/95 border border-indigo-300/40 rounded-2xl p-3 shadow-xl">
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-sm font-bold text-white">Noskenē veikala QR kodu</p>
+            <p id="storeQrScanMessage" class="text-xs text-indigo-200 mt-0.5">Norādi kameru uz admin panelī redzamo QR kodu.</p>
+          </div>
+          <button type="button" onclick="cancelStoreQrScan()" class="shrink-0 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold">Atcelt</button>
+        </div>
+      </div>
+
       <div id="cameraSleepOverlay" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-4 z-30">
         <span class="text-3xl mb-1 text-slate-400">💤</span>
         <p class="text-xs sm:text-sm font-bold text-white font-mono">Kamera iemigusi</p>
@@ -154,7 +164,10 @@
 
     <div class="flex justify-between items-center px-1 text-xs font-mono text-slate-400">
       <span id="catalogStatsText">Bāze: 0 preces</span>
-      <span id="currentRoomText">Veikals: ...</span>
+      <div class="flex items-center gap-2">
+        <span id="currentRoomText">Veikals: ...</span>
+        <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-400/25 active:scale-95 transition font-semibold" title="Noskenēt cita veikala QR kodu">🏪 Mainīt veikalu</button>
+      </div>
     </div>
 
     <!-- Saraksts -->
@@ -481,6 +494,8 @@
 
     let currentScanPhotos = [];
     let isDeviceApproved = sessionStorage.getItem('ean_device_approved') === 'true';
+    let isScanningStoreQr = false;
+    let isProcessingStoreQr = false;
     let authRetryInterval = null;
     let pingInterval = null;
     let isAuthRequiredByAdmin = localStorage.getItem('ean_auth_required') !== 'false';
@@ -789,12 +804,14 @@
     function checkWorkerSessionOnStartup() {
       const isSessionActive = sessionStorage.getItem('ean_worker_session_active');
       const savedName = localStorage.getItem('ean_device_id') || '';
-      const lastApprovedTime = parseInt(localStorage.getItem('ean_device_approved_time') || '0');
-      const isStillApproved24h = (Date.now() - lastApprovedTime) < (24 * 60 * 60 * 1000);
+      const roomId = getRoomId();
+      const lastApprovedTime = parseInt(localStorage.getItem(getRoomApprovalTimeKey(roomId)) || localStorage.getItem('ean_device_approved_time') || '0');
+      const isStillApproved24h = lastApprovedTime > 0 && (Date.now() - lastApprovedTime) < (24 * 60 * 60 * 1000);
+      const roomApproved = sessionStorage.getItem(getRoomApprovalSessionKey(roomId)) === 'true' && isStillApproved24h;
 
-      if (savedName && isStillApproved24h) {
+      if (savedName && (roomApproved || isStillApproved24h)) {
         sessionStorage.setItem('ean_worker_session_active', 'true');
-        sessionStorage.setItem('ean_device_approved', 'true');
+        sessionStorage.setItem(getRoomApprovalSessionKey(roomId), 'true');
         isDeviceApproved = true;
         updateDeviceHeaderUI();
         updateModesVisibility();
@@ -890,7 +907,7 @@
 
     function retryAuthRequest() {
       isDeviceApproved = false;
-      sessionStorage.removeItem('ean_device_approved');
+      saveCurrentRoomApproval(false);
       document.getElementById('pendingApprovalModal').classList.remove('hidden');
       sendAuthRequestMqtt();
       clearInterval(authRetryInterval);
@@ -905,8 +922,7 @@
 
     function onAdminAuthorizationGranted() {
       isDeviceApproved = true;
-      sessionStorage.setItem('ean_device_approved', 'true');
-      localStorage.setItem('ean_device_approved_time', Date.now().toString());
+      saveCurrentRoomApproval(true, true);
       clearInterval(authRetryInterval);
       setTimeout(() => { try { syncOfflineQueue(); } catch (e) {} }, 300);
 
@@ -920,8 +936,7 @@
 
     function onAdminReauthRequired() {
       isDeviceApproved = false;
-      sessionStorage.removeItem('ean_device_approved');
-      localStorage.removeItem('ean_device_approved_time');
+      saveCurrentRoomApproval(false);
       updateModesVisibility();
       requestAuthorizationFromAdmin();
     }
@@ -929,8 +944,7 @@
     function onAdminAuthorizationRejected(isBlocked = false) {
       clearInterval(authRetryInterval);
       isDeviceApproved = false;
-      sessionStorage.removeItem('ean_device_approved');
-      localStorage.removeItem('ean_device_approved_time');
+      saveCurrentRoomApproval(false);
       updateModesVisibility();
       document.getElementById('pendingApprovalModal').classList.remove('hidden');
       const title = document.querySelector('#pendingApprovalModal h3');
@@ -1046,6 +1060,7 @@
     }
 
     async function saveScanToDb(scanItem) {
+      if (!scanItem.storeRoomId) scanItem.storeRoomId = getRoomId();
       const db = await openDb();
       return new Promise((resolve, reject) => {
         const tx = db.transaction('scans', 'readwrite');
@@ -1062,6 +1077,41 @@
         const req = tx.objectStore('scans').getAll();
         req.onsuccess = () => resolve(req.result || []);
         req.onerror = () => resolve([]);
+      });
+    }
+
+    async function assignUnscopedDataToRoom(roomId) {
+      const db = await openDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('scans', 'readwrite');
+        const store = tx.objectStore('scans');
+        const request = store.getAll();
+        request.onsuccess = () => {
+          request.result.forEach(scan => {
+            if (!scan.storeRoomId) {
+              scan.storeRoomId = roomId;
+              store.put(scan);
+            }
+          });
+        };
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+
+      const outbox = await getOutbox();
+      if (!outbox.some(item => !item.roomId && !item.payload?.storeRoomId)) return;
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(OUTBOX_STORE, 'readwrite');
+        const store = tx.objectStore(OUTBOX_STORE);
+        outbox.forEach(item => {
+          if (!item.roomId && !item.payload?.storeRoomId) {
+            item.roomId = roomId;
+            item.payload.storeRoomId = roomId;
+            store.put(item);
+          }
+        });
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
       });
     }
 
@@ -1163,6 +1213,29 @@
         return storeFromHash;
       }
       return localStorage.getItem('ean_store_display_name') || getRoomId().split('-')[0] || 'Veikals';
+    }
+
+    function getRoomApprovalSessionKey(roomId = getRoomId()) {
+      return `ean_device_approved:${roomId}`;
+    }
+
+    function getRoomApprovalTimeKey(roomId = getRoomId()) {
+      return `ean_device_approved_time:${roomId}`;
+    }
+
+    function saveCurrentRoomApproval(approved, renew = false) {
+      const roomId = getRoomId();
+      if (approved) {
+        sessionStorage.setItem(getRoomApprovalSessionKey(roomId), 'true');
+        const timeKey = getRoomApprovalTimeKey(roomId);
+        const approvedAt = renew ? Date.now() : parseInt(localStorage.getItem(timeKey) || localStorage.getItem('ean_device_approved_time') || '0');
+        if (approvedAt > 0) localStorage.setItem(timeKey, approvedAt.toString());
+      } else {
+        sessionStorage.removeItem(getRoomApprovalSessionKey(roomId));
+        localStorage.removeItem(getRoomApprovalTimeKey(roomId));
+      }
+      sessionStorage.removeItem('ean_device_approved');
+      localStorage.removeItem('ean_device_approved_time');
     }
 
     function updateDeviceHeaderUI() {
@@ -1388,19 +1461,18 @@
               localStorage.setItem('ean_auth_required', isAuthRequiredByAdmin ? 'true' : 'false');
               if (!isAuthRequiredByAdmin) {
                 isDeviceApproved = true;
-                sessionStorage.setItem('ean_device_approved', 'true');
-              } else if (!localStorage.getItem('ean_device_approved_time')) {
+                saveCurrentRoomApproval(true, true);
+              } else if (!localStorage.getItem(getRoomApprovalTimeKey())) {
                 isDeviceApproved = false;
-                sessionStorage.removeItem('ean_device_approved');
+                saveCurrentRoomApproval(false);
               }
               updateModesVisibility();
               return;
             }
             if (topic.endsWith('/auth_revoke')) {
               isDeviceApproved = false;
-              sessionStorage.removeItem('ean_device_approved');
+              saveCurrentRoomApproval(false);
               sessionStorage.removeItem('ean_worker_session_active');
-              localStorage.removeItem('ean_device_approved_time');
               updateModesVisibility();
               alert('Administrators datorā ir pārtraucis sesiju!');
               return;
@@ -1446,10 +1518,12 @@
     async function queueOperation(type, payload) {
       const db = await openDb();
       const opId = payload.opId || `op-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const roomId = payload.storeRoomId || getRoomId();
       const item = {
         opId,
         type,
-        payload: { ...payload, opId, opType: type, deviceId: getDeviceId(), workerName: getWorkerName() },
+        roomId,
+        payload: { ...payload, storeRoomId: roomId, opId, opType: type, deviceId: getDeviceId(), workerName: getWorkerName() },
         createdAt: Date.now(),
         attempts: 0,
         status: 'queued'
@@ -1496,7 +1570,8 @@
       const room = getRoomId();
       const items = (await getOutbox()).sort((a, b) => a.createdAt - b.createdAt);
       for (const op of items) {
-        if (!mqttClient.connected) break;
+        if (!mqttClient.connected || getRoomId() !== room) break;
+        if ((op.roomId || op.payload?.storeRoomId || room) !== room) continue;
         const topic = op.type === 'scan' ? 'scan' : op.type === 'update' ? 'scan_update' : 'scan_delete';
         mqttClient.publish(`ean2026/${room}/${topic}`, JSON.stringify(op.payload));
         await new Promise(r => setTimeout(r, 180));
@@ -1506,10 +1581,11 @@
     }
 
     async function syncOfflineQueue() {
+      const roomId = getRoomId();
       const all = await getAllScansFromDb();
       const existing = await getOutbox();
-      const ids = new Set(existing.map(x => x.payload?.id));
-      for (const item of all.filter(x => !x.synced && x.mode !== 'pricecheck')) {
+      const ids = new Set(existing.filter(item => (item.roomId || item.payload?.storeRoomId) === roomId).map(x => x.payload?.id));
+      for (const item of all.filter(x => (x.storeRoomId || roomId) === roomId && !x.synced && x.mode !== 'pricecheck')) {
         if (!ids.has(item.id)) await queueOperation(item.pendingUpdate ? 'update' : 'scan', item);
       }
       await flushOutbox();
@@ -1518,7 +1594,8 @@
     async function updateSyncQueueBadge(count = null) {
       if (count === null) {
         const out = await getOutbox();
-        count = out.length;
+        const roomId = getRoomId();
+        count = out.filter(item => (item.roomId || item.payload?.storeRoomId || roomId) === roomId).length;
       }
       const badge = document.getElementById('syncBadge');
       const label = document.getElementById('unsyncedCount');
@@ -1594,7 +1671,9 @@
         ? availableCameras[currentCameraIndex].id 
         : { facingMode: "environment" };
 
-      const scanConfig = { fps: 24, qrbox: { width: 260, height: 160 }, aspectRatio: 1.333, experimentalFeatures: { useBarCodeDetectorIfSupported: true } };
+      const scanConfig = isScanningStoreQr
+        ? { fps: 12, qrbox: (width, height) => { const size = Math.floor(Math.min(width, height) * 0.8); return { width: size, height: size }; }, aspectRatio: 1, experimentalFeatures: { useBarCodeDetectorIfSupported: true } }
+        : { fps: 24, qrbox: { width: 260, height: 160 }, aspectRatio: 1.333, experimentalFeatures: { useBarCodeDetectorIfSupported: true } };
 
       try {
         await html5QrScanner.start(cameraConfig, scanConfig, onBarcodeDetected, () => {});
@@ -1616,7 +1695,10 @@
       try {
         await stopCameraSafely();
         if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
-        await html5QrScanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 260, height: 160 } }, onBarcodeDetected, () => {});
+        const scanConfig = isScanningStoreQr
+          ? { fps: 12, qrbox: (width, height) => { const size = Math.floor(Math.min(width, height) * 0.8); return { width: size, height: size }; }, aspectRatio: 1 }
+          : { fps: 20, qrbox: { width: 260, height: 160 } };
+        await html5QrScanner.start({ facingMode: "environment" }, scanConfig, onBarcodeDetected, () => {});
         isCameraRunning = true;
         document.getElementById('cameraPausedOverlay').classList.add('hidden');
         document.getElementById('scanLaserLine').classList.remove('hidden');
@@ -1666,7 +1748,120 @@
         : "w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
     }
 
+    async function startStoreQrScan() {
+      if (isProcessingStoreQr) return;
+      isScanningStoreQr = true;
+      isCameraAsleep = false;
+      document.getElementById('cameraSleepOverlay').classList.add('hidden');
+      document.getElementById('storeQrScanOverlay').classList.remove('hidden');
+      document.getElementById('storeQrScanMessage').innerText = 'Norādi kameru uz admin panelī redzamo QR kodu.';
+      resetActivityTimer();
+      await stopCameraSafely();
+      await startCameraWithSelectedLens();
+      if (!isCameraRunning) {
+        document.getElementById('storeQrScanMessage').innerText = 'Kamera neieslēdzās. Pārbaudi kameras atļauju un mēģini vēlreiz.';
+      }
+    }
+
+    async function cancelStoreQrScan() {
+      if (isProcessingStoreQr) return;
+      isScanningStoreQr = false;
+      document.getElementById('storeQrScanOverlay').classList.add('hidden');
+      await startCameraWithSelectedLens();
+    }
+
+    function parseStoreQrCode(value) {
+      let url;
+      try {
+        url = new URL(String(value || '').trim());
+      } catch (error) {
+        return null;
+      }
+
+      const isLocalApp = url.origin === location.origin;
+      const isPublishedApp = url.protocol === 'https:' && url.hostname === 'eanstudio.github.io' && url.pathname === '/ean-cam/';
+      if (!isLocalApp && !isPublishedApp) return null;
+
+      const params = new URLSearchParams(url.hash.replace(/^#/, ''));
+      const roomId = params.get('room') || '';
+      const storeName = params.get('store') || '';
+      if (!/^[a-zA-Z0-9_-]{1,120}$/.test(roomId) || !storeName.trim() || storeName.length > 100) return null;
+      return { roomId, storeName: storeName.trim() };
+    }
+
+    async function handleStoreQrCode(decodedText) {
+      if (!isScanningStoreQr || isProcessingStoreQr) return;
+      isProcessingStoreQr = true;
+      const store = parseStoreQrCode(decodedText);
+      if (!store) {
+        document.getElementById('storeQrScanMessage').innerText = 'Šis nav derīgs EAN Studio veikala QR kods.';
+        setTimeout(() => { isProcessingStoreQr = false; }, 1400);
+        return;
+      }
+
+      const previousRoomId = getRoomId();
+      if (store.roomId === previousRoomId) {
+        localStorage.setItem('ean_store_display_name', store.storeName);
+        history.replaceState(null, '', `${location.pathname}${location.search}#room=${encodeURIComponent(store.roomId)}&store=${encodeURIComponent(store.storeName)}`);
+        updateDeviceHeaderUI();
+        document.getElementById('storeQrScanMessage').innerText = `Jau esi veikalā “${store.storeName}”.`;
+        setTimeout(async () => {
+          isProcessingStoreQr = false;
+          await cancelStoreQrScan();
+        }, 1000);
+        return;
+      }
+
+      try {
+        await stopCameraSafely();
+        await assignUnscopedDataToRoom(previousRoomId);
+        saveCurrentRoomApproval(isDeviceApproved);
+        clearInterval(authRetryInterval);
+        clearInterval(pingInterval);
+
+        history.replaceState(null, '', `${location.pathname}${location.search}#room=${encodeURIComponent(store.roomId)}&store=${encodeURIComponent(store.storeName)}`);
+        localStorage.setItem('ean_room_id', store.roomId);
+        localStorage.setItem('ean_store_display_name', store.storeName);
+        const approvalKey = getRoomApprovalSessionKey(store.roomId);
+        isDeviceApproved = sessionStorage.getItem(approvalKey) === 'true';
+        const approvedAt = parseInt(localStorage.getItem(getRoomApprovalTimeKey(store.roomId)) || '0');
+        isDeviceApproved = isDeviceApproved && approvedAt > 0 && Date.now() - approvedAt < 24 * 60 * 60 * 1000;
+        if (isDeviceApproved) sessionStorage.setItem(approvalKey, 'true');
+        else sessionStorage.removeItem(approvalKey);
+
+        isAuthRequiredByAdmin = true;
+        localStorage.setItem('ean_auth_required', 'true');
+        isScanningStoreQr = false;
+        document.getElementById('storeQrScanOverlay').classList.add('hidden');
+        updateDeviceHeaderUI();
+        updateModesVisibility();
+
+        const allScans = await getAllScansFromDb();
+        recentScansMemory = allScans
+          .filter(scan => scan.storeRoomId === store.roomId)
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 20);
+        renderRecentScans();
+        await updateSyncQueueBadge();
+        initMqtt();
+        showScanToast(`Veikals: ${store.storeName}`, 'Pieslēgums atjaunots', store.roomId.slice(-6), null);
+        await startCameraWithSelectedLens();
+      } catch (error) {
+        console.error('Neizdevās pārslēgt veikalu:', error);
+        isScanningStoreQr = true;
+        document.getElementById('storeQrScanOverlay').classList.remove('hidden');
+        document.getElementById('storeQrScanMessage').innerText = 'Neizdevās nomainīt veikalu. Mēģini vēlreiz.';
+        await startCameraWithSelectedLens();
+      } finally {
+        isProcessingStoreQr = false;
+      }
+    }
+
     async function onBarcodeDetected(decodedText) {
+      if (isScanningStoreQr) {
+        await handleStoreQrCode(decodedText);
+        return;
+      }
       const cleanEan = String(decodedText || '').trim();
       if (!cleanEan) return;
       resetActivityTimer();
@@ -2375,9 +2570,12 @@
       requestWakeLock();
       await loadCatalogFromDb();
 
+      const activeRoomId = getRoomId();
       const allScans = await getAllScansFromDb();
-      allScans.sort((a, b) => b.timestamp - a.timestamp);
-      recentScansMemory = allScans.slice(0, 20);
+      recentScansMemory = allScans
+        .filter(scan => !scan.storeRoomId || scan.storeRoomId === activeRoomId)
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 20);
       renderRecentScans();
 
       checkWorkerSessionOnStartup();
