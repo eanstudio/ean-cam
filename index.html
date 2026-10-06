@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.26</title>
+  <title>EAN Skeneris Pro V2.27</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -81,6 +81,12 @@
       </div>
       <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="w-11 h-11 rounded-2xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-400/25 flex items-center justify-center text-lg active:scale-95 transition shadow-xs" aria-label="Mainīt veikalu, noskenējot QR kodu" title="Mainīt veikalu">🏪</button>
       <button type="button" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Pārslēgt kameru" title="Pārslēgt kameru">📷</button>
+      <button type="button" id="cameraPowerBtn" onclick="toggleCameraPower()" class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg active:scale-95 transition shadow-xs" aria-label="Izslēgt kameru" title="Izslēgt kameru" aria-pressed="true">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v10"></path>
+          <path d="M18.36 6.64a9 9 0 1 1-12.72 0"></path>
+        </svg>
+      </button>
       <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Zibspuldze" title="Zibspuldze">🔦</button>
       <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Iestatījumi" title="Iestatījumi">⚙️</button>
     </div>
@@ -146,11 +152,6 @@
         <p class="text-sm font-bold text-white font-mono">Kamera izslēgta</p>
         <p class="text-xs text-slate-400 mt-1">Ieslēdz kameru, lai turpinātu skenēt.</p>
       </div>
-
-      <button type="button" id="cameraPowerBtn" onclick="toggleCameraPower()" class="absolute bottom-2 right-2 z-50 h-9 px-3 rounded-xl bg-slate-900/90 border border-white/20 text-xs font-bold text-white shadow-lg backdrop-blur-sm active:scale-95 transition flex items-center gap-1.5" aria-label="Izslēgt kameru" aria-pressed="true">
-        <span id="cameraPowerIcon">⏻</span>
-        <span id="cameraPowerLabel">Kamera ieslēgta</span>
-      </button>
 
       <div id="toastScanOverlay" class="hidden absolute inset-x-3 top-3 bg-emerald-600/95 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between z-40 transition transform">
         <div class="truncate flex-1 pr-2">
@@ -1962,16 +1963,16 @@
 
     function updateCameraControlUI() {
       const button = document.getElementById('cameraPowerBtn');
-      const label = document.getElementById('cameraPowerLabel');
       const overlay = document.getElementById('cameraManualOverlay');
-      if (!button || !label || !overlay) return;
+      if (!button || !overlay) return;
       const enabled = !isCameraManuallyDisabled;
-      label.innerText = enabled ? 'Kamera ieslēgta' : 'Ieslēgt kameru';
-      button.setAttribute('aria-label', enabled ? 'Izslēgt kameru' : 'Ieslēgt kameru');
+      const actionLabel = enabled ? 'Izslēgt kameru' : 'Ieslēgt kameru';
+      button.setAttribute('aria-label', actionLabel);
+      button.title = actionLabel;
       button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
       button.className = enabled
-        ? 'absolute bottom-2 right-2 z-50 h-9 px-3 rounded-xl bg-slate-900/90 border border-white/20 text-xs font-bold text-white shadow-lg backdrop-blur-sm active:scale-95 transition flex items-center gap-1.5'
-        : 'absolute bottom-2 right-2 z-50 h-9 px-3 rounded-xl bg-emerald-600 border border-emerald-400/30 text-xs font-bold text-white shadow-lg active:scale-95 transition flex items-center gap-1.5';
+        ? 'w-11 h-11 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/25 text-emerald-300 flex items-center justify-center text-lg active:scale-95 transition shadow-xs'
+        : 'w-11 h-11 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-400 flex items-center justify-center text-lg active:scale-95 transition shadow-xs';
       overlay.classList.toggle('hidden', enabled);
     }
 
