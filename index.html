@@ -2,8 +2,8 @@
 <html lang="lv" class="h-full bg-slate-950 text-slate-100">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.27</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>EAN Skeneris Pro V2.28</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -51,6 +51,7 @@
     .numbtn:active { transform: scale(0.92); background-color: rgba(255, 255, 255, 0.25); }
     .smooth-scroll-list { -webkit-overflow-scrolling: touch; contain: content; }
     .neon-pulse-emerald { box-shadow: 0 0 10px 1px rgba(16, 185, 129, 0.8); }
+    body { min-height: 100vh; min-height: 100dvh; }
 
     @keyframes scanFlashGPU {
       0% { box-shadow: inset 0 0 0 4px var(--flash-color, #10b981), 0 0 25px var(--flash-glow, rgba(16, 185, 129, 0.85)); }
@@ -59,36 +60,45 @@
     .scan-flash {
       animation: scanFlashGPU 0.35s ease-out forwards;
     }
+
+    @media (orientation: landscape) and (max-height: 600px) {
+      #cameraBoxContainer { aspect-ratio: 16 / 6; max-height: 38dvh; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .scanner-laser-line, .scan-flash, .animate-pulse { animation: none !important; }
+      *, *::before, *::after { scroll-behavior: auto !important; }
+    }
   </style>
 </head>
-<body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
+<body class="min-h-full flex flex-col antialiased touch-manipulation overflow-x-hidden overflow-y-auto bg-slate-950 text-slate-100">
 
   <!-- Augšējā josla: Vārds un savienojuma punkts -->
   <header class="px-3 py-2 bg-slate-900 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
     <div class="flex items-center min-w-0">
-      <button type="button" onclick="openDiagnosticModal()" class="h-11 min-w-0 flex items-center gap-2 rounded-xl active:scale-95 transition text-left" title="Pārbaudīt savienojumu">
+      <button type="button" onclick="openDiagnosticModal()" class="h-11 min-w-0 flex items-center gap-2 rounded-xl active:scale-95 transition text-left" title="Pārbaudīt savienojumu" aria-label="Savienojuma statuss un darbinieka iestatījumi">
         <div id="mqttStatusDot" class="w-3.5 h-3.5 rounded-full bg-red-500 shrink-0 transition-colors"></div>
         <span class="min-w-0 flex flex-col items-start leading-tight">
           <span id="displayWorkerName" class="text-sm sm:text-base font-bold font-mono text-white underline decoration-dashed decoration-slate-500 underline-offset-4 truncate max-w-[100px]">Darbinieks</span>
           <span id="currentRoomText" class="text-[10px] font-mono text-slate-400 truncate max-w-[112px]">...</span>
+          <span id="mqttStatusText" class="text-[9px] font-mono text-red-300 truncate max-w-[112px]" role="status" aria-live="polite">Nav savienojuma</span>
         </span>
       </button>
     </div>
 
     <div class="flex items-center gap-1.5 shrink-0">
       <div id="syncBadge" class="hidden px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold">
-        <span id="unsyncedCount">0</span>⏳
+        <span id="unsyncedCount">0</span><span class="hidden sm:inline"> gaida</span>⏳
       </div>
       <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="w-11 h-11 rounded-2xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-400/25 flex items-center justify-center text-lg active:scale-95 transition shadow-xs" aria-label="Mainīt veikalu, noskenējot QR kodu" title="Mainīt veikalu">🏪</button>
-      <button type="button" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Pārslēgt kameru" title="Pārslēgt kameru">📷</button>
       <button type="button" id="cameraPowerBtn" onclick="toggleCameraPower()" class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg active:scale-95 transition shadow-xs" aria-label="Izslēgt kameru" title="Izslēgt kameru" aria-pressed="true">
         <svg aria-hidden="true" viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2v10"></path>
           <path d="M18.36 6.64a9 9 0 1 1-12.72 0"></path>
         </svg>
       </button>
-      <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Zibspuldze" title="Zibspuldze">🔦</button>
-      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Iestatījumi" title="Iestatījumi">⚙️</button>
+      <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Ieslēgt zibspuldzi" title="Zibspuldze" aria-pressed="false">🔦</button>
+      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Iestatījumi" title="Iestatījumi" aria-haspopup="dialog">⚙️</button>
     </div>
   </header>
 
@@ -116,8 +126,8 @@
   </div>
 
   <!-- Kameras Bloks -->
-  <main class="flex-1 flex flex-col px-3 py-1 gap-2 overflow-hidden relative">
-    <div id="cameraBoxContainer" class="relative w-full aspect-[4/3] max-h-[27vh] bg-black rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex items-center justify-center transition-all">
+  <main class="flex-1 min-h-0 flex flex-col px-3 py-1 gap-2 overflow-visible relative">
+    <div id="cameraBoxContainer" class="relative w-full aspect-[4/3] min-h-[9rem] max-h-[27vh] shrink-0 bg-black rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex items-center justify-center transition-all">
       <div id="reader" class="w-full h-full"></div>
       <div class="laser-viewport" id="laserContainer"><div id="scanLaserLine" class="scanner-laser-line"></div></div>
 
@@ -172,24 +182,24 @@
         <span class="text-base">🔍</span>
         <span class="uppercase font-mono tracking-tight text-[11px] truncate">Meklēt</span>
       </button>
-      <button type="button" id="rapidScanToggleBtn" onclick="toggleRapidScanMode()" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition" title="Ātrais +1 skenēšanas režīms bez daudzuma loga">
+      <button type="button" id="rapidScanToggleBtn" onclick="toggleRapidScanMode()" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition" title="Ieslēdzot katrs skenējums uzreiz pieskaita vienu vienību" aria-pressed="false">
         <span class="text-base" id="rapidScanIcon">⚡</span>
-        <span class="uppercase font-mono tracking-tight text-[11px] truncate" id="rapidScanLabel">Normāls</span>
+        <span class="uppercase font-mono tracking-tight text-[10px] sm:text-[11px] truncate" id="rapidScanLabel">+1 izsl.</span>
       </button>
     </div>
 
-    <div class="flex justify-between items-center gap-2 px-1 text-xs font-mono text-slate-400">
-      <div class="flex min-w-0 flex-col">
-        <span id="catalogStatsText" class="font-semibold">Bāze: 0 preces</span>
-        <span id="catalogSyncStatus" class="text-[10px] text-slate-500 truncate" role="status" aria-live="polite">Saņemšanas statuss nav zināms</span>
+    <div id="catalogStatusCard" class="flex justify-between items-center gap-2 px-3 py-2 bg-slate-900/80 border border-white/10 rounded-xl text-xs font-mono text-slate-400">
+      <div class="flex min-w-0 flex-col gap-0.5">
+        <span id="catalogStatsText" class="font-semibold text-slate-200">Bāze: 0 preces</span>
+        <span id="catalogSyncStatus" class="text-[11px] sm:text-xs text-slate-400 leading-snug break-words" role="status" aria-live="polite">Saņemšanas statuss nav zināms</span>
       </div>
     </div>
 
     <!-- Saraksts -->
-    <div class="flex-1 flex flex-col min-h-0 bg-slate-900 border border-white/10 rounded-2xl p-2.5 overflow-hidden">
+    <div class="flex-1 flex flex-col min-h-[10rem] bg-slate-900 border border-white/10 rounded-2xl p-2.5 overflow-hidden">
       <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
         <span id="listTitleLabel" class="text-xs font-bold uppercase text-slate-300 font-mono">Pēdējās 20 inventūras preces:</span>
-        <button type="button" onclick="clearLocalScansHistory()" class="h-11 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1">
+        <button type="button" onclick="clearLocalScansHistory()" class="min-h-11 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1" aria-label="Notīrīt šī tālruņa skenējumu vēsturi">
           <span>Notīrīt</span> <span>🗑️</span>
         </button>
       </div>
@@ -200,11 +210,11 @@
   </main>
 
   <!-- MODĀLIS: Diagnostika -->
-  <div id="diagnosticModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-5 space-y-3.5 shadow-2xl text-center">
+  <div id="diagnosticModal" role="dialog" aria-modal="true" aria-labelledby="diagnosticModalTitle" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto bg-slate-900 border border-white/10 rounded-3xl p-5 space-y-3.5 shadow-2xl text-center">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
-        <h3 class="text-xs font-bold text-white uppercase font-mono">Savienojuma statuss</h3>
-        <button type="button" onclick="closeDiagnosticModal()" class="text-slate-400 p-1 font-bold">✕</button>
+        <h3 id="diagnosticModalTitle" class="text-xs font-bold text-white uppercase font-mono">Savienojuma statuss</h3>
+        <button type="button" onclick="closeDiagnosticModal()" class="min-h-11 min-w-11 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white font-bold" aria-label="Aizvērt savienojuma statusu">✕</button>
       </div>
       <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1 text-xs font-mono text-left">
         <p class="text-slate-400">Veikals: <strong class="text-white" id="diagStoreName">...</strong></p>
@@ -226,11 +236,11 @@
   </div>
 
   <!-- MODĀLIS: Gaida apstiprinājumu -->
-  <div id="pendingApprovalModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-sm bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
+  <div id="pendingApprovalModal" role="dialog" aria-modal="true" aria-labelledby="pendingApprovalTitle" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto bg-slate-900 border border-amber-500/30 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-3xl animate-pulse">⏳</div>
       <div>
-        <h3 class="text-base font-bold text-white uppercase font-mono tracking-tight">Gaida apstiprinājumu</h3>
+        <h3 id="pendingApprovalTitle" class="text-base font-bold text-white uppercase font-mono tracking-tight">Gaida apstiprinājumu</h3>
         <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
           Pieprasījums nosūtīts datoram. Kamēr nav apstiprināts, varat veikt tikai cenu pārbaudi.
         </p>
@@ -252,15 +262,15 @@
   </div>
 
   <!-- MODĀLIS: Pieteikšanās -->
-  <div id="workerLoginModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
+  <div id="workerLoginModal" role="dialog" aria-modal="true" aria-labelledby="workerLoginTitle" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto bg-slate-900 border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
       <div class="w-16 h-16 mx-auto rounded-3xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-3xl shadow-xs">👤</div>
       <div>
-        <h3 class="text-lg font-bold text-white uppercase font-mono tracking-tight">Kas šodien skenēs?</h3>
+        <h3 id="workerLoginTitle" class="text-lg font-bold text-white uppercase font-mono tracking-tight">Kas šodien skenēs?</h3>
         <p class="text-xs text-slate-400 mt-1">Ievadiet savu vārdu vai darbinieka ID numuru:</p>
       </div>
       <div>
-        <input type="text" id="loginWorkerInput" placeholder="Vārds vai ID..." class="w-full h-14 px-4 text-center text-lg bg-black/60 border border-white/20 rounded-2xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
+        <input type="text" id="loginWorkerInput" aria-label="Darbinieka vārds vai ID" placeholder="Vārds vai ID..." class="w-full h-14 px-4 text-center text-lg bg-black/60 border border-white/20 rounded-2xl font-bold font-mono text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500" onkeydown="if(event.key==='Enter') submitWorkerLogin()">
       </div>
       <button type="button" onclick="submitWorkerLogin()" class="w-full h-14 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-2xl text-base transition shadow-lg shadow-emerald-600/30 active:scale-95">
         Sākt darbu ✓
@@ -269,17 +279,17 @@
   </div>
 
   <!-- MODĀLIS: Preču meklētājs bāzē -->
-  <div id="catalogSearchModal" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col p-3 sm:p-5">
-    <div class="w-full max-w-lg mx-auto flex-1 flex flex-col bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 overflow-hidden shadow-2xl">
+  <div id="catalogSearchModal" role="dialog" aria-modal="true" aria-labelledby="catalogSearchTitle" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col p-3 sm:p-5">
+    <div class="w-full max-w-lg mx-auto flex-1 flex flex-col bg-slate-900 border border-white/10 rounded-3xl p-4 space-y-3 overflow-hidden shadow-2xl">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
         <div class="flex items-center gap-2">
           <span class="text-base text-indigo-400">🔍</span>
-          <h3 class="text-sm font-bold text-white uppercase font-mono">Preču bāzes meklētājs</h3>
+          <h3 id="catalogSearchTitle" class="text-sm font-bold text-white uppercase font-mono">Preču bāzes meklētājs</h3>
         </div>
-        <button type="button" onclick="closeCatalogSearchModal()" class="w-8 h-8 rounded-xl bg-white/10 text-slate-300 flex items-center justify-center font-bold">✕</button>
+        <button type="button" onclick="closeCatalogSearchModal()" class="min-h-11 min-w-11 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center font-bold" aria-label="Aizvērt preču meklētāju">✕</button>
       </div>
       <div>
-        <input type="text" id="catalogSearchInput" placeholder="Ierakstiet nosaukumu vai kodu..." oninput="onCatalogSearchType(this.value)" class="w-full h-12 px-4 bg-black/60 border border-white/20 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <input type="text" id="catalogSearchInput" aria-label="Meklēt preci pēc nosaukuma vai koda" placeholder="Ierakstiet nosaukumu vai kodu..." oninput="onCatalogSearchType(this.value)" class="w-full h-12 px-4 bg-black/60 border border-white/20 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
       <div id="catalogSearchResults" class="smooth-scroll-list flex-1 overflow-y-auto divide-y divide-white/5 space-y-1 pr-1">
         <p class="text-center text-xs text-slate-500 py-10">Ierakstiet vismaz 2 burtus meklēšanai</p>
@@ -287,13 +297,13 @@
     </div>
   </div>
   <!-- MODĀLIS: Svītrkoda ģenerators un skatītājs -->
-  <div id="barcodeDisplayModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="w-full max-w-sm bg-slate-900 border border-white/20 rounded-3xl p-5 space-y-4 shadow-2xl text-center">
+  <div id="barcodeDisplayModal" role="dialog" aria-modal="true" aria-labelledby="barcodeDisplayTitle" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto bg-slate-900 border border-white/10 rounded-3xl p-5 space-y-4 shadow-2xl text-center">
       <div class="flex items-center justify-between pb-2 border-b border-white/10">
-        <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-1.5">
+        <h3 id="barcodeDisplayTitle" class="text-xs font-bold text-white uppercase font-mono tracking-wider flex items-center gap-1.5">
           <span>||||</span> <span>Svītrkods ekrānā</span>
         </h3>
-        <button type="button" onclick="closeBarcodeModal()" class="w-8 h-8 rounded-xl bg-white/10 text-slate-300 flex items-center justify-center font-bold">✕</button>
+        <button type="button" onclick="closeBarcodeModal()" class="min-h-11 min-w-11 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center font-bold" aria-label="Aizvērt svītrkodu">✕</button>
       </div>
       <div>
         <p id="barcodeModalItemName" class="text-sm font-bold text-white truncate">Preces nosaukums</p>
@@ -311,11 +321,11 @@
 
 
   <!-- MODĀLIS: Koda ievade ar roku -->
-  <div id="manualEanModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
-    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-4 space-y-3 shadow-2xl">
+  <div id="manualEanModal" role="dialog" aria-modal="true" aria-labelledby="manualEanTitle" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-1rem)] overflow-y-auto mx-auto bg-slate-900 border border-white/10 rounded-3xl p-4 space-y-3 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
-        <h3 class="text-xs font-bold text-white uppercase font-mono tracking-wide">Svītrkoda ievade ar roku</h3>
-        <button type="button" onclick="closeManualEanModal()" class="text-slate-400 p-1 text-lg font-bold">✕</button>
+        <h3 id="manualEanTitle" class="text-xs font-bold text-white uppercase font-mono tracking-wide">Svītrkoda ievade ar roku</h3>
+        <button type="button" onclick="closeManualEanModal()" class="min-h-11 min-w-11 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-lg font-bold" aria-label="Aizvērt svītrkoda ievadi">✕</button>
       </div>
       <div class="px-3 py-2.5 bg-black/70 rounded-2xl border border-white/15 text-center">
         <input type="text" id="manualEanDisplay" readonly inputmode="none" value="" placeholder="Ievadiet ciparus..." class="w-full text-center text-2xl font-bold font-mono tracking-widest text-emerald-400 bg-transparent focus:outline-none">
@@ -342,8 +352,8 @@
   </div>
 
   <!-- MODĀLIS: Preces kartīte un daudzums -->
-  <div id="qtyModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
-    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
+  <div id="qtyModal" role="dialog" aria-modal="true" aria-labelledby="modalItemName" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-1rem)] overflow-y-auto mx-auto bg-slate-900 border border-white/10 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-1">
         <div class="flex items-start justify-between gap-2">
           <h2 id="modalItemName" class="text-sm sm:text-base font-bold text-white leading-tight line-clamp-2">Prece...</h2>
@@ -376,10 +386,10 @@
       </div>
 
       <div id="qtyPresetsBar" class="grid grid-cols-4 gap-1.5">
-        <button type="button" onclick="addPresetQty(0.5)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+0.5</button>
-        <button type="button" onclick="addPresetQty(1.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+1.0</button>
-        <button type="button" onclick="addPresetQty(5.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+5</button>
-        <button type="button" onclick="addPresetQty(10.0)" class="py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+10</button>
+        <button type="button" onclick="addPresetQty(0.5)" class="min-h-11 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+0.5</button>
+        <button type="button" onclick="addPresetQty(1.0)" class="min-h-11 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+1.0</button>
+        <button type="button" onclick="addPresetQty(5.0)" class="min-h-11 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+5</button>
+        <button type="button" onclick="addPresetQty(10.0)" class="min-h-11 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-mono font-bold text-slate-300 border border-white/5 active:scale-95">+10</button>
       </div>
 
       <div class="grid grid-cols-3 gap-1.5">
@@ -407,11 +417,11 @@
   </div>
 
   <!-- MODĀLIS: Labot ierakstu (Ar precīzi definētu gab/kg mērvienību!) -->
-  <div id="editModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
-    <div class="w-full max-w-sm mx-auto bg-slate-900 border border-white/20 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
+  <div id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col justify-end p-2.5 sm:p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-1rem)] overflow-y-auto mx-auto bg-slate-900 border border-white/10 rounded-3xl p-3.5 space-y-2.5 shadow-2xl">
       <div class="flex items-center justify-between pb-1 border-b border-white/10">
         <h3 id="editModalTitle" class="text-xs font-bold text-white uppercase font-mono">Labot daudzumu</h3>
-        <button type="button" onclick="closeEditModal()" class="text-slate-400 p-1 text-base font-bold">✕</button>
+        <button type="button" onclick="closeEditModal()" class="min-h-11 min-w-11 rounded-xl bg-white/5 border border-white/10 text-slate-400 text-base font-bold" aria-label="Aizvērt skenējuma labošanu">✕</button>
       </div>
       <div>
         <p id="editItemName" class="text-sm font-bold text-white line-clamp-1">Prece</p>
@@ -449,47 +459,47 @@
   </div>
 
   <!-- MODĀLIS: Iestatījumi -->
-  <div id="settingsModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+  <div id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
     <div class="w-full max-w-md max-h-[90vh] overflow-y-auto bg-slate-900 border border-white/10 rounded-3xl p-4 sm:p-5 space-y-4 shadow-2xl">
       <div class="flex items-center justify-between pb-3 border-b border-white/10">
         <div class="flex items-center gap-3">
           <span class="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-400/20 text-emerald-300 flex items-center justify-center text-lg">⚙️</span>
           <div>
-            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wider">Iestatījumi</h3>
+            <h3 id="settingsModalTitle" class="text-sm font-bold text-white uppercase font-mono tracking-wider">Iestatījumi</h3>
             <p class="text-[11px] text-slate-400 mt-0.5">Lietotnes un ierīces preferences</p>
           </div>
         </div>
-        <button type="button" onclick="closeSettingsModal()" class="w-9 h-9 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white text-base font-bold transition">✕</button>
+        <button type="button" id="settingsModalClose" onclick="closeSettingsModal()" class="min-h-11 min-w-11 rounded-xl bg-white/5 border border-white/10 text-slate-400 hover:text-white text-base font-bold transition" aria-label="Aizvērt iestatījumus">✕</button>
       </div>
 
       <div class="space-y-2.5 text-xs sm:text-sm">
         <div class="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
           <div>
-            <label class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Darbinieks / Ierīce</label>
-            <input type="text" id="settingDeviceId" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
+            <label for="settingDeviceId" class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Darbinieks / Ierīce</label>
+            <input type="text" id="settingDeviceId" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-base focus:outline-none focus:ring-1 focus:ring-emerald-500">
           </div>
           <div>
-            <label class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Veikala nosaukums</label>
-            <input type="text" id="settingRoomId" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
+            <label for="settingRoomId" class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Veikala nosaukums</label>
+            <input type="text" id="settingRoomId" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-base focus:outline-none focus:ring-1 focus:ring-emerald-500">
           </div>
         </div>
         <div class="p-3 rounded-2xl bg-white/5 border border-white/10">
-          <label class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Izvēlētā kamera</label>
-          <select id="cameraSelectDropdown" onchange="onCameraSelectedFromDropdown(this.value)" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"></select>
+          <label for="cameraSelectDropdown" class="block uppercase font-bold text-slate-400 font-mono text-[10px] tracking-wider mb-1.5">Izvēlētā kamera</label>
+          <select id="cameraSelectDropdown" onchange="onCameraSelectedFromDropdown(this.value)" class="w-full h-11 px-3.5 bg-slate-950/70 border border-white/10 rounded-xl text-white font-mono text-base focus:outline-none focus:ring-1 focus:ring-emerald-500"></select>
         </div>
         <div class="flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl">
           <div class="min-w-0">
             <p class="font-bold text-white">Norādīt / mainīt cenu</p>
             <p class="text-xs text-slate-400">Inventūras režīmā</p>
           </div>
-          <input type="checkbox" id="settingPricePromptToggle" onchange="togglePricePromptSetting(this.checked)" class="w-5 h-5 shrink-0 rounded-lg accent-emerald-500 focus:ring-emerald-500">
+          <input type="checkbox" id="settingPricePromptToggle" aria-label="Norādīt vai mainīt cenu inventūras režīmā" onchange="togglePricePromptSetting(this.checked)" class="w-5 h-5 shrink-0 rounded-lg accent-emerald-500 focus:ring-emerald-500">
         </div>
         <div class="flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/10 rounded-2xl">
           <div class="min-w-0">
             <p class="font-bold text-white">Skaņas signāls</p>
             <p class="text-xs text-slate-400">Izslēdz, ja strādā tirdzniecības zālē</p>
           </div>
-          <input type="checkbox" id="settingSoundToggle" onchange="toggleSoundSetting(this.checked)" class="w-5 h-5 shrink-0 rounded-lg accent-emerald-500 focus:ring-emerald-500">
+          <input type="checkbox" id="settingSoundToggle" aria-label="Skaņas signāls" onchange="toggleSoundSetting(this.checked)" class="w-5 h-5 shrink-0 rounded-lg accent-emerald-500 focus:ring-emerald-500">
         </div>
         <div class="pt-3 border-t border-white/10 space-y-2">
           <button type="button" onclick="manualSync()" class="w-full h-11 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-xs sm:text-sm font-semibold text-slate-200 active:scale-[0.99] transition">Piespiedu sinhronizācija 🔄</button>
@@ -580,14 +590,17 @@
       const label = document.getElementById('rapidScanLabel');
       const icon = document.getElementById('rapidScanIcon');
       if (!btn || !label || !icon) return;
+      btn.setAttribute('aria-pressed', isRapidScanEnabled ? 'true' : 'false');
       if (isRapidScanEnabled) {
         btn.className = "py-2.5 px-2 bg-amber-500 text-black font-bold text-xs rounded-2xl shadow-lg border border-amber-300 flex items-center justify-center gap-1.5 transition active:scale-95";
-        label.innerText = "Ātrais +1";
+        label.innerText = "+1 iesl.";
         icon.innerText = "⚡";
+        btn.title = "Ātrais režīms ieslēgts: katrs skenējums uzreiz pieskaita vienu vienību.";
       } else {
         btn.className = "py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition";
-        label.innerText = "Standarta";
-        icon.innerText = "⏱️";
+        label.innerText = "+1 izsl.";
+        icon.innerText = "⚡";
+        btn.title = "Ātrais režīms izslēgts: pēc skenēšanas var norādīt daudzumu.";
       }
     }
 
@@ -762,6 +775,7 @@
         btns[k].className = k === appMode 
           ? (activeColorClasses[k] || activeColorClasses.inventory)
           : "h-11 py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1";
+        btns[k].setAttribute('aria-pressed', k === appMode ? 'true' : 'false');
       });
 
       const laser = document.getElementById('scanLaserLine');
@@ -1023,7 +1037,7 @@
     }
 
     function isAnyModalOpen() {
-      const modalIds = ['pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal', 'diagnosticModal'];
+      const modalIds = ['pendingApprovalModal', 'workerLoginModal', 'catalogSearchModal', 'barcodeDisplayModal', 'manualEanModal', 'qtyModal', 'editModal', 'settingsModal', 'diagnosticModal'];
       return modalIds.some(id => {
         const el = document.getElementById(id);
         return el && !el.classList.contains('hidden');
@@ -1235,12 +1249,15 @@
             ? formatCatalogSourceDate(summary.sourceModifiedAt)
             : new Date(summary.receivedAt).toLocaleString('lv-LV', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
           status.innerText = `1C faila datums: ${sourceDate} · +${summary.added} jaunas · ${summary.changed} mainītas · −${summary.removed} noņemtas`;
+          status.className = 'text-[11px] sm:text-xs text-slate-400 leading-snug break-words';
         } else {
           status.innerText = localCatalog.size ? 'Bāzes saņemšanas laiks nav zināms' : 'Bāze vēl nav saņemta';
+          status.className = 'text-[11px] sm:text-xs text-slate-400 leading-snug break-words';
         }
       } catch (error) {
         console.error('Neizdevās nolasīt bāzes saņemšanas kopsavilkumu:', error);
         status.innerText = 'Neizdevās nolasīt bāzes atjauninājuma statusu';
+        status.className = 'text-[11px] sm:text-xs text-red-300 leading-snug break-words';
       }
     }
 
@@ -1308,6 +1325,7 @@
           const progress = document.getElementById('catalogSyncStatus');
           if (progress && receivedCount < totalChunks) {
             progress.innerText = `Saņem bāzi: ${receivedCount} no ${totalChunks} daļām`;
+            progress.className = 'text-[11px] sm:text-xs text-sky-300 leading-snug break-words';
           }
           if (receivedCount < totalChunks) return;
 
@@ -1450,12 +1468,24 @@
 
     function updateConnectionStatusUI(connected) {
       const dot = document.getElementById('mqttStatusDot');
+      const label = document.getElementById('mqttStatusText');
       if (!dot) return;
       if (connected) {
         dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse neon-pulse-emerald shrink-0";
+        if (label) {
+          label.innerText = 'Savienots';
+          label.className = 'text-[9px] font-mono text-emerald-300 truncate max-w-[112px]';
+        }
       } else {
         dot.className = "w-3.5 h-3.5 rounded-full bg-red-500 shrink-0";
+        if (label) {
+          label.innerText = 'Nav savienojuma';
+          label.className = 'text-[9px] font-mono text-red-300 truncate max-w-[112px]';
+        }
       }
+      dot.setAttribute('aria-hidden', 'true');
+      const control = dot.closest('button');
+      if (control) control.setAttribute('aria-label', `Savienojuma statuss: ${connected ? 'savienots' : 'nav savienojuma'}. Darbinieks ${getWorkerName()}, veikals ${getStoreDisplayName()}. Atvērt diagnostiku.`);
     }
 
     let isSyncingQueue = false;
@@ -1834,7 +1864,12 @@
       const badge = document.getElementById('syncBadge');
       const label = document.getElementById('unsyncedCount');
       if (badge && label) {
-        if (count > 0 && isDeviceApproved) { badge.classList.remove('hidden'); label.innerText = count; }
+        if (count > 0 && isDeviceApproved) {
+          badge.classList.remove('hidden');
+          label.innerText = count;
+          badge.setAttribute('role', 'status');
+          badge.setAttribute('aria-label', `${count} darbības gaida nosūtīšanu`);
+        }
         else { badge.classList.add('hidden'); }
       }
     }
@@ -1864,6 +1899,15 @@
       const select = document.getElementById('cameraSelectDropdown');
       if (!select) return;
       select.innerHTML = '';
+      if (!availableCameras.length) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.text = 'Kamera nav atrasta';
+        opt.disabled = true;
+        opt.selected = true;
+        select.appendChild(opt);
+        return;
+      }
       availableCameras.forEach((cam, idx) => {
         const opt = document.createElement('option');
         opt.value = idx;
@@ -1871,15 +1915,6 @@
         if (idx === currentCameraIndex) opt.selected = true;
         select.appendChild(opt);
       });
-    }
-
-    async function switchCameraLens() {
-      if (availableCameras.length <= 1) { alert("Atrasta tikai viena kamera!"); return; }
-      currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-      const select = document.getElementById('cameraSelectDropdown');
-      if (select) select.value = currentCameraIndex;
-      await stopCameraSafely();
-      await startCameraWithSelectedLens();
     }
 
     async function onCameraSelectedFromDropdown(idxStr) {
@@ -2014,6 +2049,9 @@
     function updateTorchUI(on) {
       const btn = document.getElementById('torchBtn');
       if (!btn) return;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-label', on ? 'Izslēgt zibspuldzi' : 'Ieslēgt zibspuldzi');
+      btn.title = on ? 'Izslēgt zibspuldzi' : 'Ieslēgt zibspuldzi';
       btn.className = on 
         ? "w-11 h-11 rounded-2xl bg-amber-500 text-black flex items-center justify-center text-lg shadow-md shadow-amber-500/30" 
         : "w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg";
@@ -2613,9 +2651,9 @@
         row.onclick = () => openEditModal(it.id);
 
         const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit' });
-        const syncDot = it.synced 
-          ? `<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>` 
-          : `<span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>`;
+        const syncStatus = it.synced
+          ? `<span class="inline-flex items-center gap-1 text-[10px] text-emerald-300 shrink-0" aria-label="Nosūtīts"><span class="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true"></span>Nosūtīts</span>`
+          : `<span class="inline-flex items-center gap-1 text-[10px] text-amber-300 shrink-0" aria-label="Gaida nosūtīšanu"><span class="w-2 h-2 rounded-full bg-amber-400" aria-hidden="true"></span>Gaida</span>`;
 
         let badgeHtml = it.mode === 'repricing' 
           ? `<span class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs sm:text-sm">${it.price || '0.00'} €</span>`
@@ -2623,7 +2661,7 @@
 
         row.innerHTML = `
           <div class="truncate flex-1">
-            <div class="flex items-center gap-1.5">${syncDot}<p class="text-xs sm:text-sm font-semibold text-white truncate">${it.name}</p></div>
+            <div class="flex items-center gap-1.5">${syncStatus}<p class="text-xs sm:text-sm font-semibold text-white truncate">${it.name}</p></div>
             <p class="text-xs font-mono text-slate-400 mt-0.5">${it.ean} • ${it.price || '0.00'} € • ${timeStr}</p>
           </div>
           <div class="text-right shrink-0">${badgeHtml}</div>
@@ -2789,12 +2827,14 @@
       document.getElementById('settingPricePromptToggle').checked = isPricePromptEnabled;
       populateCameraDropdown();
       document.getElementById('settingsModal').classList.remove('hidden');
+      document.getElementById('settingsModalClose').focus();
     }
 
     function closeSettingsModal() {
       document.getElementById('settingsModal').classList.add('hidden');
       resetActivityTimer();
       startCameraWithSelectedLens();
+      document.querySelector('button[onclick="openSettingsModal()"]')?.focus();
     }
 
     function saveSettings() {
@@ -2829,6 +2869,69 @@
     }
 
     document.addEventListener('pointerdown', resetActivityTimer);
+    const dialogReturnFocus = new WeakMap();
+    function getDialogFocusableElements(dialog) {
+      return [...dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(item => item.getClientRects().length > 0);
+    }
+
+    const dialogFocusObserver = new MutationObserver(records => {
+      records.forEach(record => {
+        const dialog = record.target;
+        const wasHidden = record.oldValue?.split(/\s+/).includes('hidden');
+        const isHidden = dialog.classList.contains('hidden');
+        if (wasHidden && !isHidden) {
+          dialogReturnFocus.set(dialog, document.activeElement);
+          getDialogFocusableElements(dialog)[0]?.focus();
+        } else if (!wasHidden && isHidden) {
+          const returnTarget = dialogReturnFocus.get(dialog);
+          if (returnTarget instanceof HTMLElement && returnTarget.isConnected) returnTarget.focus();
+        }
+      });
+    });
+    document.querySelectorAll('[role="dialog"]').forEach(dialog => {
+      dialogFocusObserver.observe(dialog, { attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+    });
+
+    document.addEventListener('keydown', event => {
+      const dialog = [...document.querySelectorAll('[role="dialog"]')].find(item => !item.classList.contains('hidden'));
+      if (event.key === 'Tab' && dialog) {
+        const focusable = getDialogFocusableElements(dialog);
+        if (!focusable.length) {
+          event.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+          event.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      if (event.key !== 'Escape') return;
+
+      const openDialog = [
+        ['diagnosticModal', closeDiagnosticModal],
+        ['settingsModal', closeSettingsModal],
+        ['catalogSearchModal', closeCatalogSearchModal],
+        ['barcodeDisplayModal', closeBarcodeModal],
+        ['manualEanModal', closeManualEanModal],
+        ['qtyModal', cancelScan],
+        ['editModal', closeEditModal]
+      ].find(([id]) => !document.getElementById(id).classList.contains('hidden'));
+
+      if (openDialog) {
+        event.preventDefault();
+        openDialog[1]();
+      } else if (isScanningStoreQr && !isProcessingStoreQr) {
+        event.preventDefault();
+        cancelStoreQrScan();
+      }
+    });
 
     if (window.isSecureContext && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {

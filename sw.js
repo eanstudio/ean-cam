@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ean-skeneris-shell-v6';
+const CACHE_NAME = 'ean-skeneris-shell-v8';
 const APP_SHELL = new URL('./index.html', self.registration.scope).href;
 
 self.addEventListener('install', event => {
