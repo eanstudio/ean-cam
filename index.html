@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.24</title>
+  <title>EAN Skeneris Pro V2.25</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -1190,6 +1190,13 @@
       });
     }
 
+    function formatCatalogSourceDate(timestamp) {
+      const date = new Date(timestamp);
+      return Number.isFinite(date.getTime())
+        ? date.toLocaleString('lv-LV', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+        : 'datums nav norādīts';
+    }
+
     function saveCatalogSyncSummary(summary) {
       localStorage.setItem('ean_catalog_sync_summary', JSON.stringify(summary));
       updateCatalogStatsUI();
@@ -1203,8 +1210,10 @@
       try {
         const summary = JSON.parse(localStorage.getItem('ean_catalog_sync_summary') || 'null');
         if (summary && Number.isFinite(summary.receivedAt)) {
-          const receivedAt = new Date(summary.receivedAt).toLocaleString('lv-LV', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-          status.innerText = `Atjaunots ${receivedAt} · +${summary.added} jaunas · ${summary.changed} mainītas · −${summary.removed} noņemtas`;
+          const sourceDate = summary.sourceDate || (summary.sourceModifiedAt
+            ? formatCatalogSourceDate(summary.sourceModifiedAt)
+            : new Date(summary.receivedAt).toLocaleString('lv-LV', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+          status.innerText = `1C faila datums: ${sourceDate} · +${summary.added} jaunas · ${summary.changed} mainītas · −${summary.removed} noņemtas`;
         } else {
           status.innerText = localCatalog.size ? 'Bāzes saņemšanas laiks nav zināms' : 'Bāze vēl nav saņemta';
         }
@@ -1225,13 +1234,31 @@
       window._toastTimeout = setTimeout(() => overlay.classList.add('hidden'), 3500);
     }
 
+    function sendCatalogChunkAck(payload, status = 'ok', error = '') {
+      const roomId = getRoomId();
+      if (!mqttClient || !mqttClient.connected) return false;
+      return mqttClient.publish(`ean2026/${roomId}/catalog_ack`, JSON.stringify({
+        deviceId: getDeviceId(),
+        transferId: payload.transferId,
+        chunkIndex: payload.chunkIndex,
+        attempt: payload.attempt,
+        status,
+        error,
+        time: Date.now()
+      }));
+    }
+
     async function receiveCatalogTransferChunk(payload) {
-      const { transferId, chunkIndex, totalChunks, items } = payload;
+      const { transferId, chunkIndex, totalChunks, items, sourceModifiedAt, sourceDate } = payload;
       if (
         typeof transferId !== 'string' || !/^catalog-[a-zA-Z0-9_-]{1,120}$/.test(transferId) ||
         !Number.isInteger(chunkIndex) || !Number.isInteger(totalChunks) ||
+        !Number.isInteger(payload.attempt) || payload.attempt < 0 ||
+        !Number.isInteger(payload.totalItems) || payload.totalItems < 1 ||
+        !Number.isFinite(sourceModifiedAt) || sourceModifiedAt <= 0 ||
+        typeof sourceDate !== 'string' ||
         totalChunks < 1 || totalChunks > 10000 || chunkIndex < 0 || chunkIndex >= totalChunks ||
-        !Array.isArray(items) || items.length < 1 || items.length > 1000 ||
+        !Array.isArray(items) || items.length < 1 || items.length > 250 ||
         items.some(item => !item || typeof item.ean !== 'string' || !item.ean.trim() || typeof item.nosaukums !== 'string' || !item.nosaukums.trim())
       ) {
         throw new Error('Saņemta nederīga preču bāzes pārraides daļa.');
@@ -1243,7 +1270,7 @@
         const tx = db.transaction(['catalog', 'catalogTransfers'], 'readwrite');
         const catalogStore = tx.objectStore('catalog');
         const transfersStore = tx.objectStore('catalogTransfers');
-        transfersStore.put({ key: `${transferId}:${chunkIndex}`, transferId, chunkIndex, totalChunks, items, receivedAt: Date.now() });
+        transfersStore.put({ key: `${transferId}:${chunkIndex}`, transferId, chunkIndex, totalChunks, totalItems: payload.totalItems, items, sourceModifiedAt, sourceDate, receivedAt: Date.now() });
         const expiredBefore = Date.now() - 24 * 60 * 60 * 1000;
         const cleanupRequest = transfersStore.getAll();
         cleanupRequest.onsuccess = () => {
@@ -1262,7 +1289,12 @@
           }
           if (
             receivedCount !== totalChunks ||
-            Array.from(uniqueChunks.values()).some(chunk => chunk.totalChunks !== totalChunks)
+            Array.from(uniqueChunks.values()).some(chunk =>
+              chunk.totalChunks !== totalChunks ||
+              chunk.totalItems !== payload.totalItems ||
+              chunk.sourceModifiedAt !== sourceModifiedAt ||
+              chunk.sourceDate !== sourceDate
+            )
           ) return;
 
           const nextCatalog = new Map();
@@ -1277,7 +1309,7 @@
               nextCatalog.set(item.ean, item);
             }
           }
-          if (!nextCatalog.size) {
+          if (!nextCatalog.size || nextCatalog.size !== payload.totalItems) {
             tx.abort();
             return;
           }
@@ -1292,7 +1324,7 @@
             resolve(false);
             return;
           }
-          const summary = { added: 0, changed: 0, removed: 0, receivedAt: Date.now() };
+          const summary = { added: 0, changed: 0, removed: 0, receivedAt: Date.now(), sourceModifiedAt, sourceDate };
           completedCatalog.forEach((item, ean) => {
             const previous = localCatalog.get(ean);
             if (!previous) summary.added++;
@@ -1408,6 +1440,16 @@
     const p2pConns = new Set();
     const mqttSeen = new Map();
 
+    function mqttTopicMatches(filter, topic) {
+      const filterParts = filter.split('/');
+      const topicParts = topic.split('/');
+      for (let i = 0; i < filterParts.length; i++) {
+        if (filterParts[i] === '#') return i === filterParts.length - 1;
+        if (i >= topicParts.length || (filterParts[i] !== '+' && filterParts[i] !== topicParts[i])) return false;
+      }
+      return filterParts.length === topicParts.length;
+    }
+
     function mqttIsDuplicate(topic, msg) {
       const now = Date.now();
       const key = topic + '|' + msg.toString();
@@ -1469,7 +1511,7 @@
           p2pConns.add(conn); onStatus(); onOpen();
         });
         conn.on('data', d => {
-          if (!alive() || !d || typeof d.t !== 'string' || !topics.includes(d.t)) return;
+          if (!alive() || !d || typeof d.t !== 'string' || !topics.some(filter => mqttTopicMatches(filter, d.t))) return;
           const msg = String(d.p);
           if (mqttIsDuplicate(d.t, msg)) return;
           onMessage(d.t, msg);
@@ -1566,6 +1608,7 @@
       if (typeof mqtt === 'undefined' && typeof Peer === 'undefined') { updateConnectionStatusUI(false); return; }
       const topics = [
         `ean2026/${roomId}/catalog`, `ean2026/${roomId}/ack/${deviceId}`,
+        `ean2026/${roomId}/catalog/${deviceId}`, `ean2026/${roomId}/catalog_ack`,
         `ean2026/${roomId}/auth/${deviceId}`, `ean2026/${roomId}/auth_revoke`,
         `ean2026/${roomId}/price_update`, `ean2026/${roomId}/auth_setting`
       ];
@@ -1627,6 +1670,7 @@
               }
               return;
             }
+            if (topic.endsWith('/catalog_ack')) return;
 
             // TŪLĪTĒJS APSTIPRINĀJUMS: ATJAUNINA PUNKTU ZAĻĀ KRĀSĀ BEZ LOGA AIZVĒRŠANAS!
             if (topic.includes(`/ack/${deviceId}`) && (payload.opId || payload.scanId)) {
@@ -1642,8 +1686,26 @@
             }
 
             if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
-              if (payload.transferId) await receiveCatalogTransferChunk(payload);
+              if (payload.transferId) {
+                try {
+                  await receiveCatalogTransferChunk(payload);
+                  sendCatalogChunkAck(payload);
+                } catch (error) {
+                  console.error('Neizdevās saņemt preču bāzes daļu:', error);
+                  sendCatalogChunkAck(payload, 'error', error.message || 'Neizdevās saglabāt daļu.');
+                }
+              }
               else await saveCatalogBatchToDb(payload.items, true);
+              return;
+            }
+            if (topic === `ean2026/${roomId}/catalog/${deviceId}` && Array.isArray(payload.items)) {
+              try {
+                await receiveCatalogTransferChunk(payload);
+                sendCatalogChunkAck(payload);
+              } catch (error) {
+                console.error('Neizdevās saņemt preču bāzes daļu:', error);
+                sendCatalogChunkAck(payload, 'error', error.message || 'Neizdevās saglabāt daļu.');
+              }
               return;
             }
             if (topic.endsWith('/price_update')) {
