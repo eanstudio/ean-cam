@@ -30,8 +30,9 @@ jobs:
 
       - name: Prepare web assets
         run: |
-          mkdir -p www
-          cp index.html www/
+          mkdir -p www/icons
+          cp index.html manifest.json sw.js www/
+          cp icons/*.png www/icons/
 
       - name: Initialize Capacitor Android
         run: |
