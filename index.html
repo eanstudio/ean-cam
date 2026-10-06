@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.23</title>
+  <title>EAN Skeneris Pro V2.24</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -64,21 +64,25 @@
 <body class="h-full flex flex-col antialiased select-none touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
 
   <!-- Augšējā josla: Vārds un savienojuma punkts -->
-  <header class="px-3.5 py-2.5 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0">
-    <div class="flex items-center gap-2.5">
-      <button type="button" onclick="openDiagnosticModal()" class="flex items-center gap-2 p-1 rounded-xl active:scale-95 transition" title="Pārbaudīt savienojumu">
+  <header class="px-3 py-2 bg-slate-900 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+    <div class="flex items-center min-w-0">
+      <button type="button" onclick="openDiagnosticModal()" class="h-11 min-w-0 flex items-center gap-2 rounded-xl active:scale-95 transition text-left" title="Pārbaudīt savienojumu">
         <div id="mqttStatusDot" class="w-3.5 h-3.5 rounded-full bg-red-500 shrink-0 transition-colors"></div>
-        <span id="displayWorkerName" class="text-sm sm:text-base font-bold font-mono text-white underline decoration-dashed decoration-slate-500 underline-offset-4 truncate max-w-[140px]">Darbinieks</span>
+        <span class="min-w-0 flex flex-col items-start leading-tight">
+          <span id="displayWorkerName" class="text-sm sm:text-base font-bold font-mono text-white underline decoration-dashed decoration-slate-500 underline-offset-4 truncate max-w-[100px]">Darbinieks</span>
+          <span id="currentRoomText" class="text-[10px] font-mono text-slate-400 truncate max-w-[112px]">...</span>
+        </span>
       </button>
     </div>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-1.5 shrink-0">
       <div id="syncBadge" class="hidden px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-mono font-bold">
         <span id="unsyncedCount">0</span>⏳
       </div>
-      <button type="button" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Pārslēgt kameru">📷</button>
-      <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" title="Zibspuldze">🔦</button>
-      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs">⚙️</button>
+      <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="w-11 h-11 rounded-2xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-400/25 flex items-center justify-center text-lg active:scale-95 transition shadow-xs" aria-label="Mainīt veikalu, noskenējot QR kodu" title="Mainīt veikalu">🏪</button>
+      <button type="button" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Pārslēgt kameru" title="Pārslēgt kameru">📷</button>
+      <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Zibspuldze" title="Zibspuldze">🔦</button>
+      <button type="button" onclick="openSettingsModal()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg active:bg-white/20 transition shadow-xs" aria-label="Iestatījumi" title="Iestatījumi">⚙️</button>
     </div>
   </header>
 
@@ -86,19 +90,19 @@
   <div class="px-3 pt-2 pb-1 shrink-0 bg-slate-950">
     <div id="modesContainer" class="p-1 bg-slate-900 border border-white/10 rounded-2xl text-[11px] sm:text-xs">
       <div class="grid grid-cols-4 gap-1">
-        <button type="button" id="modeBtn_inventory" onclick="handleModeClick('inventory')" class="py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1">
+        <button type="button" id="modeBtn_inventory" onclick="handleModeClick('inventory')" class="h-11 py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1">
           <span id="lockIcon_inventory" class="hidden text-[10px]">🔒</span>
           <span>Inventūra</span>
         </button>
-        <button type="button" id="modeBtn_labels" onclick="handleModeClick('labels')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
+        <button type="button" id="modeBtn_labels" onclick="handleModeClick('labels')" class="h-11 py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
           <span id="lockIcon_labels" class="hidden text-[10px]">🔒</span>
           <span>Cenu zīmes</span>
         </button>
-        <button type="button" id="modeBtn_repricing" onclick="handleModeClick('repricing')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
+        <button type="button" id="modeBtn_repricing" onclick="handleModeClick('repricing')" class="h-11 py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1">
           <span id="lockIcon_repricing" class="hidden text-[10px]">🔒</span>
           <span>Pārcenošana</span>
         </button>
-        <button type="button" id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
+        <button type="button" id="modeBtn_pricecheck" onclick="setAppMode('pricecheck')" class="h-11 py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white">
           Pārbaude
         </button>
       </div>
@@ -162,11 +166,10 @@
       </button>
     </div>
 
-    <div class="flex justify-between items-center px-1 text-xs font-mono text-slate-400">
-      <span id="catalogStatsText">Bāze: 0 preces</span>
-      <div class="flex items-center gap-2">
-        <span id="currentRoomText">Veikals: ...</span>
-        <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-400/25 active:scale-95 transition font-semibold" title="Noskenēt cita veikala QR kodu">🏪 Mainīt veikalu</button>
+    <div class="flex justify-between items-center gap-2 px-1 text-xs font-mono text-slate-400">
+      <div class="flex min-w-0 flex-col">
+        <span id="catalogStatsText" class="font-semibold">Bāze: 0 preces</span>
+        <span id="catalogSyncStatus" class="text-[10px] text-slate-500 truncate" role="status" aria-live="polite">Saņemšanas statuss nav zināms</span>
       </div>
     </div>
 
@@ -174,7 +177,7 @@
     <div class="flex-1 flex flex-col min-h-0 bg-slate-900 border border-white/10 rounded-2xl p-2.5 overflow-hidden">
       <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
         <span id="listTitleLabel" class="text-xs font-bold uppercase text-slate-300 font-mono">Pēdējās 20 inventūras preces:</span>
-        <button type="button" onclick="clearLocalScansHistory()" class="px-2 py-0.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1">
+        <button type="button" onclick="clearLocalScansHistory()" class="h-11 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1">
           <span>Notīrīt</span> <span>🗑️</span>
         </button>
       </div>
@@ -727,17 +730,17 @@
       };
 
       const activeColorClasses = {
-        inventory: "py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1",
-        labels: "py-2 font-bold rounded-xl transition bg-indigo-600 text-white shadow-xs flex items-center justify-center gap-1",
-        repricing: "py-2 font-bold rounded-xl transition bg-amber-600 text-white shadow-xs flex items-center justify-center gap-1",
-        pricecheck: "py-2 font-bold rounded-xl transition bg-sky-600 text-white shadow-xs flex items-center justify-center gap-1"
+        inventory: "h-11 py-2 font-bold rounded-xl transition bg-emerald-600 text-white shadow-xs flex items-center justify-center gap-1",
+        labels: "h-11 py-2 font-bold rounded-xl transition bg-indigo-600 text-white shadow-xs flex items-center justify-center gap-1",
+        repricing: "h-11 py-2 font-bold rounded-xl transition bg-amber-600 text-white shadow-xs flex items-center justify-center gap-1",
+        pricecheck: "h-11 py-2 font-bold rounded-xl transition bg-sky-600 text-white shadow-xs flex items-center justify-center gap-1"
       };
 
       Object.keys(btns).forEach(k => {
         if (!btns[k]) return;
         btns[k].className = k === appMode 
           ? (activeColorClasses[k] || activeColorClasses.inventory)
-          : "py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1";
+          : "h-11 py-2 font-semibold rounded-xl transition text-slate-400 hover:text-white flex items-center justify-center gap-1";
       });
 
       const laser = document.getElementById('scanLaserLine');
@@ -1042,7 +1045,7 @@
 
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v11', 2);
+        const req = indexedDB.open('EanScannerDB_v11', 3);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -1053,8 +1056,20 @@
           }
           if (!db.objectStoreNames.contains('catalog')) db.createObjectStore('catalog', { keyPath: 'ean' });
           if (!db.objectStoreNames.contains(OUTBOX_STORE)) db.createObjectStore(OUTBOX_STORE, { keyPath: 'opId' });
+          if (!db.objectStoreNames.contains('catalogTransfers')) {
+            const transfers = db.createObjectStore('catalogTransfers', { keyPath: 'key' });
+            transfers.createIndex('transferId', 'transferId', { unique: false });
+          }
         };
-        req.onsuccess = () => resolve(req.result);
+        req.onsuccess = () => {
+          const db = req.result;
+          db.onversionchange = () => {
+            console.warn('IndexedDB versija mainās; aizveru veco savienojumu.');
+            db.close();
+          };
+          resolve(db);
+        };
+        req.onblocked = () => console.warn('IndexedDB atjauninājums gaida, līdz tiek aizvērti citi lietotnes logi.');
         req.onerror = () => reject(req.error);
       });
     }
@@ -1150,24 +1165,151 @@
       });
     }
 
-    async function saveCatalogBatchToDb(items) {
+    async function saveCatalogBatchToDb(items, recordSync = false) {
       const db = await openDb();
+      const before = new Map(localCatalog);
       return new Promise((resolve, reject) => {
         const tx = db.transaction('catalog', 'readwrite');
         const store = tx.objectStore('catalog');
         items.forEach(it => store.put(it));
         tx.oncomplete = () => {
-          items.forEach(it => localCatalog.set(String(it.ean), it));
+          let added = 0;
+          let changed = 0;
+          items.forEach(it => {
+            const ean = String(it.ean);
+            const previous = before.get(ean);
+            if (!previous) added++;
+            else if (previous.nosaukums !== it.nosaukums || previous.cena !== it.cena || previous.atlikums !== it.atlikums) changed++;
+            localCatalog.set(ean, it);
+          });
           updateCatalogStatsUI();
+          if (recordSync) saveCatalogSyncSummary({ added, changed, removed: 0, receivedAt: Date.now() });
           resolve();
         };
         tx.onerror = () => reject(tx.error);
       });
     }
 
+    function saveCatalogSyncSummary(summary) {
+      localStorage.setItem('ean_catalog_sync_summary', JSON.stringify(summary));
+      updateCatalogStatsUI();
+    }
+
     function updateCatalogStatsUI() {
       const el = document.getElementById('catalogStatsText');
       if (el) el.innerText = `Bāze: ${localCatalog.size} preces`;
+      const status = document.getElementById('catalogSyncStatus');
+      if (!status) return;
+      try {
+        const summary = JSON.parse(localStorage.getItem('ean_catalog_sync_summary') || 'null');
+        if (summary && Number.isFinite(summary.receivedAt)) {
+          const receivedAt = new Date(summary.receivedAt).toLocaleString('lv-LV', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+          status.innerText = `Atjaunots ${receivedAt} · +${summary.added} jaunas · ${summary.changed} mainītas · −${summary.removed} noņemtas`;
+        } else {
+          status.innerText = localCatalog.size ? 'Bāzes saņemšanas laiks nav zināms' : 'Bāze vēl nav saņemta';
+        }
+      } catch (error) {
+        console.error('Neizdevās nolasīt bāzes saņemšanas kopsavilkumu:', error);
+        status.innerText = 'Neizdevās nolasīt bāzes atjauninājuma statusu';
+      }
+    }
+
+    function showCatalogSyncNotice(summary, itemCount) {
+      const overlay = document.getElementById('toastScanOverlay');
+      if (!overlay) return;
+      document.getElementById('toastScanTitle').innerText = 'Preču bāze atjaunota';
+      document.getElementById('toastScanSub').innerText = `${itemCount} preces · +${summary.added} jaunas · ${summary.changed} mainītas · −${summary.removed} noņemtas`;
+      document.getElementById('toastScanQty').classList.add('hidden');
+      overlay.classList.remove('hidden');
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = setTimeout(() => overlay.classList.add('hidden'), 3500);
+    }
+
+    async function receiveCatalogTransferChunk(payload) {
+      const { transferId, chunkIndex, totalChunks, items } = payload;
+      if (
+        typeof transferId !== 'string' || !/^catalog-[a-zA-Z0-9_-]{1,120}$/.test(transferId) ||
+        !Number.isInteger(chunkIndex) || !Number.isInteger(totalChunks) ||
+        totalChunks < 1 || totalChunks > 10000 || chunkIndex < 0 || chunkIndex >= totalChunks ||
+        !Array.isArray(items) || items.length < 1 || items.length > 1000 ||
+        items.some(item => !item || typeof item.ean !== 'string' || !item.ean.trim() || typeof item.nosaukums !== 'string' || !item.nosaukums.trim())
+      ) {
+        throw new Error('Saņemta nederīga preču bāzes pārraides daļa.');
+      }
+
+      const db = await openDb();
+      let completedCatalog = null;
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(['catalog', 'catalogTransfers'], 'readwrite');
+        const catalogStore = tx.objectStore('catalog');
+        const transfersStore = tx.objectStore('catalogTransfers');
+        transfersStore.put({ key: `${transferId}:${chunkIndex}`, transferId, chunkIndex, totalChunks, items, receivedAt: Date.now() });
+        const expiredBefore = Date.now() - 24 * 60 * 60 * 1000;
+        const cleanupRequest = transfersStore.getAll();
+        cleanupRequest.onsuccess = () => {
+          cleanupRequest.result.forEach(chunk => {
+            if (chunk.receivedAt < expiredBefore) transfersStore.delete(chunk.key);
+          });
+        };
+        const request = transfersStore.index('transferId').getAll(transferId);
+        request.onsuccess = () => {
+          const chunks = request.result || [];
+          const uniqueChunks = new Map(chunks.map(chunk => [chunk.chunkIndex, chunk]));
+          const receivedCount = uniqueChunks.size;
+          const progress = document.getElementById('catalogSyncStatus');
+          if (progress && receivedCount < totalChunks) {
+            progress.innerText = `Saņem bāzi: ${receivedCount} no ${totalChunks} daļām`;
+          }
+          if (
+            receivedCount !== totalChunks ||
+            Array.from(uniqueChunks.values()).some(chunk => chunk.totalChunks !== totalChunks)
+          ) return;
+
+          const nextCatalog = new Map();
+          for (let index = 0; index < totalChunks; index++) {
+            const chunk = uniqueChunks.get(index);
+            if (!chunk) return;
+            for (const item of chunk.items) {
+              if (!item || typeof item.ean !== 'string' || !item.ean.trim() || typeof item.nosaukums !== 'string' || !item.nosaukums.trim() || nextCatalog.has(item.ean)) {
+                tx.abort();
+                return;
+              }
+              nextCatalog.set(item.ean, item);
+            }
+          }
+          if (!nextCatalog.size) {
+            tx.abort();
+            return;
+          }
+
+          catalogStore.clear();
+          nextCatalog.forEach(item => catalogStore.put(item));
+          chunks.forEach(chunk => transfersStore.delete(chunk.key));
+          completedCatalog = nextCatalog;
+        };
+        tx.oncomplete = () => {
+          if (!completedCatalog) {
+            resolve(false);
+            return;
+          }
+          const summary = { added: 0, changed: 0, removed: 0, receivedAt: Date.now() };
+          completedCatalog.forEach((item, ean) => {
+            const previous = localCatalog.get(ean);
+            if (!previous) summary.added++;
+            else if (previous.nosaukums !== item.nosaukums || previous.cena !== item.cena || previous.atlikums !== item.atlikums) summary.changed++;
+          });
+          localCatalog.forEach((_, ean) => {
+            if (!completedCatalog.has(ean)) summary.removed++;
+          });
+          localCatalog.clear();
+          completedCatalog.forEach((item, ean) => localCatalog.set(ean, item));
+          saveCatalogSyncSummary(summary);
+          showCatalogSyncNotice(summary, completedCatalog.size);
+          resolve(true);
+        };
+        tx.onerror = () => reject(tx.error || new Error('Neizdevās saglabāt saņemto preču bāzi.'));
+        tx.onabort = () => reject(tx.error || new Error('Preču bāzes pārraide tika atcelta; iepriekšējā bāze saglabāta.'));
+      });
     }
 
     async function clearLocalScansHistory() {
@@ -1500,7 +1642,8 @@
             }
 
             if (topic.endsWith('/catalog') && Array.isArray(payload.items)) {
-              await saveCatalogBatchToDb(payload.items);
+              if (payload.transferId) await receiveCatalogTransferChunk(payload);
+              else await saveCatalogBatchToDb(payload.items, true);
               return;
             }
             if (topic.endsWith('/price_update')) {
