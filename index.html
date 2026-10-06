@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.28</title>
+  <title>EAN Skeneris Pro V2.29</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -91,6 +91,7 @@
         <span id="unsyncedCount">0</span><span class="hidden sm:inline"> gaida</span>⏳
       </div>
       <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="w-11 h-11 rounded-2xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-400/25 flex items-center justify-center text-lg active:scale-95 transition shadow-xs" aria-label="Mainīt veikalu, noskenējot QR kodu" title="Mainīt veikalu">🏪</button>
+      <button type="button" id="cameraLensBtn" onclick="switchCameraLens()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/15 text-slate-200 flex items-center justify-center text-lg transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Pārslēgt kameru" title="Pārslēgt kameru" disabled>📷</button>
       <button type="button" id="cameraPowerBtn" onclick="toggleCameraPower()" class="w-11 h-11 rounded-2xl flex items-center justify-center text-lg active:scale-95 transition shadow-xs" aria-label="Izslēgt kameru" title="Izslēgt kameru" aria-pressed="true">
         <svg aria-hidden="true" viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2v10"></path>
@@ -182,9 +183,9 @@
         <span class="text-base">🔍</span>
         <span class="uppercase font-mono tracking-tight text-[11px] truncate">Meklēt</span>
       </button>
-      <button type="button" id="rapidScanToggleBtn" onclick="toggleRapidScanMode()" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition" title="Ieslēdzot katrs skenējums uzreiz pieskaita vienu vienību" aria-pressed="false">
+      <button type="button" id="rapidScanToggleBtn" onclick="toggleRapidScanMode()" class="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:brightness-90 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition-colors duration-150" title="Ieslēdzot katrs skenējums uzreiz pieskaita vienu vienību" aria-pressed="false">
         <span class="text-base" id="rapidScanIcon">⚡</span>
-        <span class="uppercase font-mono tracking-tight text-[10px] sm:text-[11px] truncate" id="rapidScanLabel">+1 izsl.</span>
+        <span class="w-12 shrink-0 text-center uppercase font-mono tracking-tight text-[10px] sm:text-[11px] whitespace-nowrap" id="rapidScanLabel">+1 izsl.</span>
       </button>
     </div>
 
@@ -588,18 +589,17 @@
     function updateRapidScanUI() {
       const btn = document.getElementById('rapidScanToggleBtn');
       const label = document.getElementById('rapidScanLabel');
-      const icon = document.getElementById('rapidScanIcon');
-      if (!btn || !label || !icon) return;
+      if (!btn || !label) return;
       btn.setAttribute('aria-pressed', isRapidScanEnabled ? 'true' : 'false');
       if (isRapidScanEnabled) {
-        btn.className = "py-2.5 px-2 bg-amber-500 text-black font-bold text-xs rounded-2xl shadow-lg border border-amber-300 flex items-center justify-center gap-1.5 transition active:scale-95";
-        label.innerText = "+1 iesl.";
-        icon.innerText = "⚡";
+        btn.classList.remove('bg-slate-800', 'hover:bg-slate-700', 'text-slate-300', 'border-white/10');
+        btn.classList.add('bg-amber-500', 'text-black', 'border-amber-300');
+        label.textContent = '+1 iesl.';
         btn.title = "Ātrais režīms ieslēgts: katrs skenējums uzreiz pieskaita vienu vienību.";
       } else {
-        btn.className = "py-2.5 px-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-bold text-xs rounded-2xl shadow-lg border border-white/10 flex items-center justify-center gap-1.5 transition";
-        label.innerText = "+1 izsl.";
-        icon.innerText = "⚡";
+        btn.classList.remove('bg-amber-500', 'text-black', 'border-amber-300');
+        btn.classList.add('bg-slate-800', 'hover:bg-slate-700', 'text-slate-300', 'border-white/10');
+        label.textContent = '+1 izsl.';
         btn.title = "Ātrais režīms izslēgts: pēc skenēšanas var norādīt daudzumu.";
       }
     }
@@ -1906,6 +1906,7 @@
         opt.disabled = true;
         opt.selected = true;
         select.appendChild(opt);
+        updateCameraSwitchUI();
         return;
       }
       availableCameras.forEach((cam, idx) => {
@@ -1915,10 +1916,29 @@
         if (idx === currentCameraIndex) opt.selected = true;
         select.appendChild(opt);
       });
+      updateCameraSwitchUI();
+    }
+
+    function updateCameraSwitchUI() {
+      const button = document.getElementById('cameraLensBtn');
+      if (!button) return;
+      const canSwitch = availableCameras.length > 1;
+      button.disabled = !canSwitch;
+      button.title = canSwitch ? 'Pārslēgt kameru' : 'Papildu kamera nav atrasta';
+      button.setAttribute('aria-label', canSwitch ? 'Pārslēgt kameru' : 'Pieejama tikai viena kamera');
+    }
+
+    async function switchCameraLens() {
+      if (availableCameras.length <= 1) return;
+      const nextIndex = (currentCameraIndex + 1) % availableCameras.length;
+      await onCameraSelectedFromDropdown(String(nextIndex));
     }
 
     async function onCameraSelectedFromDropdown(idxStr) {
       currentCameraIndex = parseInt(idxStr) || 0;
+      const select = document.getElementById('cameraSelectDropdown');
+      if (select) select.value = String(currentCameraIndex);
+      updateCameraSwitchUI();
       await stopCameraSafely();
       await startCameraWithSelectedLens();
     }
