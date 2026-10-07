@@ -6,6 +6,8 @@
 
 ### Mainīts
 
+- Preču bāzes izsūtīšana vairākiem tālruņiem optimizēta: katalogs tiek sagatavots un saspiests (gzip) vienu reizi, daļas ir lielākas, vienlaikus tiek apkalpoti ne vairāk kā 2 tālruņi, un tālrunis ar jau aktuālu bāzi to automātiski nesaņem atkārtoti. Vecākas lietotnes versijas turpina saņemt nesaspiestu bāzi.
+- Skeneris V2.32 (nepieciešams kopā ar admin V2.35), atjaunināta PWA kešatmiņas versija.
 - Skenera galvenais ekrāns ir fiksēts tālruņa redzamajā augstumā; ritinās tikai skenēto preču saraksts.
 - Sarakstā katrā režīmā saglabā un rāda pēdējās 50 preces. Inventūras rindai pieskaroties, daudzumu var labot uzreiz, un korekcija tiek sinhronizēta ar admin paneli.
 - Pievienota vecāku šī veikala inventūras skenējumu meklēšana pēc nosaukuma vai svītrkoda visā tālruņa lokālajā vēsturē, lai arī ārpus pēdējām 50 rindām varētu izlabot daudzumu bez admin paneļa.
@@ -17,6 +19,7 @@
 - Admin paneļa veikalu profilu pārslēgšana, izveide, pārdēvēšana un arhivēšana/atjaunošana.
 - Admin paneļa rīkjoslas un preču bāzes statusa attēlojuma uzlabojumi.
 - Veikala izveides dialogam pievienota atcelšana un aizvēršana ar Escape.
+- Admin panelī kļūdas un brīdinājumi redzami atsevišķā, katram veikalam lokāli saglabātā paziņojumu cilnē; piekļuves pieprasījumi paliek redzami virs cilnēm.
 
 ## [2.30] — 2026-10-07
 
