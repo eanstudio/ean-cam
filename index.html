@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.32</title>
+  <title>EAN Skeneris Pro V2.33</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -95,7 +95,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.32 — Ātrāka preču bāzes saņemšana: saspiesta pārraide un bāze netiek lejupielādēta atkārtoti, ja tā jau ir aktuāla.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.33 — Ja lietotnē nav izvēlēts veikals (piem. iPhone sākuma ekrāna ikona), tā piedāvā noskenēt QR vai ielīmēt saiti.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -310,6 +310,23 @@
           <button type="button" onclick="retryAuthRequest()" class="w-1/2 py-2 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold transition">Sūtīt vēlreiz 🔄</button>
           <button type="button" onclick="cancelAuthAndChangeWorker()" class="w-1/2 py-2 bg-red-500/20 text-red-400 rounded-xl text-xs font-bold transition">Mainīt vārdu</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODĀLIS: Veikals nav izvēlēts (piem. iOS sākuma ekrāna lietotne zaudē QR saiti) -->
+  <div id="storeSetupModal" role="dialog" aria-modal="true" aria-labelledby="storeSetupTitle" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto bg-slate-900 border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl text-center">
+      <div class="w-16 h-16 mx-auto rounded-3xl bg-indigo-500/15 text-indigo-300 flex items-center justify-center text-3xl shadow-xs">🏬</div>
+      <div>
+        <h3 id="storeSetupTitle" class="text-lg font-bold text-white uppercase font-mono tracking-tight">Izvēlies veikalu</h3>
+        <p class="text-xs text-slate-400 mt-1">Šajā lietotnē vēl nav norādīts veikals, tāpēc dators tevi neredzēs. Noskenē admin panelī redzamo veikala QR kodu vai ielīmē saiti.</p>
+      </div>
+      <button type="button" onclick="scanStoreQrFromSetup()" class="w-full h-14 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-base transition shadow-lg shadow-indigo-600/30 active:scale-95">Skenēt veikala QR 📷</button>
+      <div class="space-y-2">
+        <input type="url" id="storeSetupLinkInput" aria-label="Veikala saite" placeholder="Ielīmē veikala saiti..." class="w-full h-12 px-3 text-sm bg-black/60 border border-white/20 rounded-2xl font-mono text-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" onkeydown="if(event.key==='Enter') submitStoreSetupLink()">
+        <button type="button" onclick="submitStoreSetupLink()" class="w-full h-12 bg-white/10 hover:bg-white/15 text-white font-bold rounded-2xl text-sm transition active:scale-95">Pievienot saiti</button>
+        <p id="storeSetupMessage" class="text-xs text-amber-300 min-h-4" role="status" aria-live="polite"></p>
       </div>
     </div>
   </div>
@@ -919,7 +936,62 @@
       if (!isCameraRunning) initCameraSystem();
     }
 
+    function isRoomConfigured() {
+      const fromHash = new URLSearchParams(window.location.hash.replace('#', '')).get('room');
+      return Boolean(fromHash || localStorage.getItem('ean_room_id'));
+    }
+
+    function showStoreSetupModal(message = '') {
+      document.getElementById('workerLoginModal')?.classList.add('hidden');
+      document.getElementById('storeSetupMessage').innerText = message;
+      document.getElementById('storeSetupModal').classList.remove('hidden');
+    }
+
+    async function scanStoreQrFromSetup() {
+      document.getElementById('storeSetupModal').classList.add('hidden');
+      await startStoreQrScan();
+    }
+
+    function applyInitialStore(store) {
+      localStorage.setItem('ean_room_id', store.roomId);
+      localStorage.setItem('ean_store_display_name', store.storeName);
+      history.replaceState(null, '', `${location.pathname}${location.search}#room=${encodeURIComponent(store.roomId)}&store=${encodeURIComponent(store.storeName)}`);
+      location.reload();
+    }
+
+    function submitStoreSetupLink() {
+      const store = parseStoreQrCode(document.getElementById('storeSetupLinkInput').value);
+      if (!store) {
+        document.getElementById('storeSetupMessage').innerText = 'Šī nav derīga EAN Studio veikala saite.';
+        return;
+      }
+      applyInitialStore(store);
+    }
+
+    // PWA sākuma adrese ietver veikalu, lai instalēšana (it īpaši iOS) nezaudētu QR saiti
+    async function syncManifestWithStore() {
+      try {
+        const link = document.querySelector('link[rel="manifest"]');
+        if (!link || !isRoomConfigured()) return;
+        const manifestUrl = new URL('./manifest.json', location.href);
+        const manifest = await (await fetch(manifestUrl.href, { cache: 'no-cache' })).json();
+        const startUrl = new URL(manifest.start_url || './index.html', manifestUrl);
+        startUrl.hash = `room=${encodeURIComponent(getRoomId())}&store=${encodeURIComponent(getStoreDisplayName())}`;
+        manifest.id = new URL(manifest.id || './index.html', manifestUrl).href;
+        manifest.start_url = startUrl.href;
+        manifest.scope = new URL(manifest.scope || './', manifestUrl).href;
+        manifest.icons = (manifest.icons || []).map(icon => ({ ...icon, src: new URL(icon.src, manifestUrl).href }));
+        link.href = URL.createObjectURL(new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' }));
+      } catch (e) {
+        console.warn('Neizdevās atjaunot PWA manifestu:', e);
+      }
+    }
+
     function checkWorkerSessionOnStartup() {
+      if (!isRoomConfigured()) {
+        showStoreSetupModal();
+        return;
+      }
       const isSessionActive = sessionStorage.getItem('ean_worker_session_active');
       const savedName = localStorage.getItem('ean_device_id') || '';
       const roomId = getRoomId();
@@ -2199,6 +2271,11 @@
       if (isProcessingStoreQr) return;
       isScanningStoreQr = false;
       document.getElementById('storeQrScanOverlay').classList.add('hidden');
+      if (!isRoomConfigured()) {
+        await stopCameraSafely();
+        showStoreSetupModal();
+        return;
+      }
       await startCameraWithSelectedLens();
     }
 
@@ -2228,6 +2305,12 @@
       if (!store) {
         document.getElementById('storeQrScanMessage').innerText = 'Šis nav derīgs EAN Studio veikala QR kods.';
         setTimeout(() => { isProcessingStoreQr = false; }, 1400);
+        return;
+      }
+
+      if (!isRoomConfigured()) {
+        await stopCameraSafely();
+        applyInitialStore(store);
         return;
       }
 
@@ -3145,7 +3228,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.32';
+    const APP_UPDATE_VERSION = '2.33';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;
@@ -3233,6 +3316,7 @@
       recentScansMemory = getRecentScansForRoom(allScans, activeRoomId);
       renderRecentScans();
 
+      void syncManifestWithStore();
       checkWorkerSessionOnStartup();
       updateModesVisibility();
       updateRapidScanUI();
