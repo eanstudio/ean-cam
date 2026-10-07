@@ -6,6 +6,7 @@
 
 ### Mainīts
 
+- iPad/iPhone skenēšanai palielināts kameras attēla un QR/EAN nolasīšanas laukums, samazināts dekodēšanas biežums, lai ierīce spētu apstrādāt augstākas izšķirtspējas attēlu bez pārslogojuma.
 - iPad/iPhone kamera tagad tiek palaista Full HD izšķirtspējā ar nepārtrauktu fokusu (iepriekš ~640x480), lai varētu nolasīt veikala QR un svītrkodus.
 - Uzlabota veikala QR skenēšana iPad/iPhone: kameras atļauja tiek pieprasīta pirms skenēšanas, pievienots vienkāršāks kameras palaišanas mēģinājums un rādīts kameras kļūdas iemesls.
 - Pievienota lietotnes instalēšanas josla: Android ierīcēs poga "Instalēt", iPhone/iPad — instrukcija (Kopīgot → Add to Home Screen). Josla neparādās instalētā lietotnē un to var aizvērt.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.36</title>
+  <title>EAN Skeneris Pro V2.37</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -83,6 +83,10 @@
       #cameraBoxContainer { aspect-ratio: 16 / 6; max-height: 38dvh; }
     }
 
+    @media (pointer: coarse) and (min-width: 768px) and (min-height: 600px) {
+      #cameraBoxContainer { aspect-ratio: auto; height: 38dvh; min-height: 18rem; max-height: 42dvh; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .scanner-laser-line, .scan-flash, .animate-pulse { animation: none !important; }
       *, *::before, *::after { scroll-behavior: auto !important; }
@@ -95,7 +99,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.36 — iPad/iPhone kamera skenē augstākā izšķirtspējā un nepārtraukti fokusējas. V2.35 — Uzlabota veikala QR skenēšana iPad/iPhone ierīcēs. V2.34 — Pievienota lietotnes instalēšanas josla (Android poga, iOS instrukcija). V2.33 — Ja lietotnē nav izvēlēts veikals (piem. iPhone sākuma ekrāna ikona), tā piedāvā noskenēt QR vai ielīmēt saiti.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.37 — Palielināts iPad kameras laukums un nolasīšanas zona; samazināta iOS skenēšanas slodze. V2.36 — iPad/iPhone kamera skenē augstākā izšķirtspējā un nepārtraukti fokusējas.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -2200,11 +2204,27 @@
         ? availableCameras[currentCameraIndex].id 
         : { facingMode: "environment" };
 
+      const isIos = isIosDevice();
       const scanConfig = isScanningStoreQr
-        ? { fps: 12, qrbox: (width, height) => { const size = Math.floor(Math.min(width, height) * 0.8); return { width: size, height: size }; }, aspectRatio: 1, experimentalFeatures: { useBarCodeDetectorIfSupported: true } }
-        : { fps: 24, qrbox: { width: 260, height: 160 }, aspectRatio: 1.333, experimentalFeatures: { useBarCodeDetectorIfSupported: true } };
+        ? {
+            fps: isIos ? 10 : 12,
+            qrbox: (width, height) => {
+              const size = Math.floor(Math.min(width, height) * (isIos ? 0.9 : 0.8));
+              return { width: size, height: size };
+            },
+            aspectRatio: 1,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+          }
+        : {
+            fps: isIos ? 10 : 24,
+            qrbox: isIos
+              ? (width, height) => ({ width: Math.floor(width * 0.9), height: Math.floor(height * 0.75) })
+              : { width: 260, height: 160 },
+            aspectRatio: 1.333,
+            experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+          };
 
-      if (isIosDevice()) {
+      if (isIos) {
         scanConfig.videoConstraints = getHdVideoConstraints(cameraConfig);
         delete scanConfig.aspectRatio;
       }
@@ -2235,9 +2255,22 @@
       try {
         await stopCameraSafely();
         if (!html5QrScanner) html5QrScanner = new Html5Qrcode("reader");
+        const isIos = isIosDevice();
         const scanConfig = isScanningStoreQr
-          ? { fps: 12, qrbox: (width, height) => { const size = Math.floor(Math.min(width, height) * 0.8); return { width: size, height: size }; }, aspectRatio: 1 }
-          : { fps: 20, qrbox: { width: 260, height: 160 } };
+          ? {
+              fps: isIos ? 10 : 12,
+              qrbox: (width, height) => {
+                const size = Math.floor(Math.min(width, height) * (isIos ? 0.9 : 0.8));
+                return { width: size, height: size };
+              },
+              aspectRatio: 1
+            }
+          : {
+              fps: isIos ? 10 : 20,
+              qrbox: isIos
+                ? (width, height) => ({ width: Math.floor(width * 0.9), height: Math.floor(height * 0.75) })
+                : { width: 260, height: 160 }
+            };
         try {
           if (isIosDevice()) scanConfig.videoConstraints = getHdVideoConstraints(null);
           await html5QrScanner.start({ facingMode: "environment" }, scanConfig, onBarcodeDetected, () => {});
@@ -3318,7 +3351,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.36';
+    const APP_UPDATE_VERSION = '2.37';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;
