@@ -5,7 +5,8 @@ EAN Skeneris ir mobilā svītrkodu skenera tīmekļa lietotne (PWA). Tā darboja
 ## Projekta statuss
 
 - Publiskā lietotne ir skeneris (`index.html`) kopā ar manifestu, servisa darbinieku un ikonām.
-- Admin panelis (`admin.html`) pašlaik paredzēts tikai lokālai testēšanai. Tas netiek publicēts GitHub Pages vietnē un ir izslēgts no turpmākajiem Git papildinājumiem ar `.gitignore`.
+- Admin panelis tiek uzturēts atsevišķā privātajā `ean-cam-admin` repozitorijā un nav šī publiskā repozitorija daļa. Admin faili (`admin.html`, `admin.css`, `admin.js`, `admin-*.js`) ir ignorēti ar `.gitignore`, un tiem šeit nav jāatrodas.
+- Šī repozitorija `CHANGELOG.md` ir publiskās skenera/PWA lietotnes žurnāls. Admin paneļa izmaiņas dokumentē tikai privātajā `ean-cam-admin/CHANGELOG.md`.
 - Admin panelis glabā profilus un iestatījumus pārlūka lokālajā krātuvē. Tie ir pieejami tikai tajā pašā pārlūkā un ierīcē.
 
 > **Svarīgi:** repozitorijs ir publisks, un agrāk publicēta `admin.html` versija joprojām var būt apskatāma Git vēsturē. Faila izņemšana no pašreizējās vietnes neizdzēš tā iepriekšējos GitHub ierakstus. Panelī nav jāglabā paroles, API atslēgas vai cita slepena informācija.
@@ -21,22 +22,31 @@ EAN Skeneris ir mobilā svītrkodu skenera tīmekļa lietotne (PWA). Tā darboja
 
 QR kodā ir veikala ID un attēlojamais nosaukums. Šī informācija nav šifrēta un nav piekļuves parole.
 
-## Lokāla palaišana un admin paneļa testēšana
+## Lokāla palaišana
 
 Nepieciešams Python 3. Projekta tīmekļa daļai nav vajadzīgs kompilācijas solis vai `npm install`.
 
-PowerShell logā no projekta mapes palaid lokālu HTTP serveri:
+Atver `D:\Projekti\EAN Studio\EAN Studio.code-workspace`, lai vienā VS Code logā strādātu ar publisko PWA un privāto admin projektu. Faili paliek savos atsevišķajos repozitorijos; tie netiek kopēti vai sinhronizēti.
+
+PowerShell terminālī palaid katru projektu no tā mapes atsevišķi:
 
 ```powershell
+# Publiskais skeneris
+Set-Location "D:\Projekti\EAN Studio\ean-cam"
 python -m http.server 8000
 ```
 
-Pārlūkā atver:
+```powershell
+# Privātais admin panelis
+Set-Location "D:\Projekti\EAN Studio\ean-cam-admin"
+python -m http.server 8001
+```
 
-- Skeneri: <http://localhost:8000/>
-- Lokālo admin paneli: <http://localhost:8000/admin.html>
+Pārlūkā atver skeneri <http://localhost:8000/> vai lokālo admin paneli <http://localhost:8001/admin.html>.
 
-Kamerai un servisa darbiniekam vajadzīgs drošs konteksts — publiskajā vidē HTTPS, lokālā testēšanā `localhost`. Admin panelis ir ignorēts ar Git, tāpēc pēc jauna klonējuma tā lokālais `admin.html` fails nebūs pieejams automātiski; tas jāpievieno lokāli atsevišķi.
+Kamerai un servisa darbiniekam vajadzīgs drošs konteksts — publiskajā vidē HTTPS, lokālā testēšanā `localhost`. Privātais admin panelis pēc atsevišķas repozitorija piekļuves klonējams savā mapē; tas netiek iegūts, klonējot publisko `ean-cam`.
+
+Admin paneļa labās puses panelī cilne **Notikumi** rāda skenēšanas un administrēšanas vēsturi, bet **Paziņojumi** saglabā kļūdas un brīdinājumus atsevišķi katram veikalam šajā pārlūkā. Paziņojumu var atzīmēt kā izskatītu; tas paliek sarakstā, līdz tiek iztīrīti izskatītie ieraksti. Gaidītie tālruņu piekļuves pieprasījumi paliek redzami virs abām cilnēm.
 
 ## PWA instalēšana
 
@@ -48,7 +58,7 @@ Servisa darbinieks kešo lietotnes sākuma lapu un var to atgriezt bezsaistē. T
 
 ## Admin paneļa veikalu profili
 
-Šī sadaļa attiecas uz lokāli testējamo `admin.html` versiju, nevis publisko skenera vietni.
+Šī sadaļa attiecas uz privāto `ean-cam-admin` paneli, nevis publisko skenera vietni.
 
 1. Izvēlies profilu vai izveido jaunu veikalu. Veikalu nosaukumi var atkārtoties, jo katram profilam ir savs nemainīgs ID.
 2. Pārdēvēšana nemaina veikala ID. Admin panelī redzamais veikala QR kods satur ID un nosaukumu.
@@ -57,7 +67,7 @@ Servisa darbinieks kešo lietotnes sākuma lapu un var to atgriezt bezsaistē. T
 
 Profilu un iestatījumu glabāšana ir lokāla pārlūka `localStorage`; skenējumu dati tiek glabāti pārlūka `IndexedDB`. Šie dati netiek automātiski dublēti vai pārvietoti uz citu datoru. Pārlūka datu tīrīšana var tos neatgriezeniski izdzēst.
 
-Kad admin panelī atkārtoti ielādē un izsūta pilnu `DataToScaner.txt` katalogu, tālrunis to saņem pa apstiprinātām 200 preču daļām un aizvieto iepriekšējo katalogu tikai pēc visu daļu saņemšanas. Lokālais admin sūta līdz četrām daļām paralēli, gaidot katras saņēmēja apstiprinājumu; tas samazina gaidīšanu starp simtiem mazu daļu, nemainot to izmēru vai atkārtotas nosūtīšanas drošības mehānismu. Nepilnas pārraides vai nederīga/tukša faila gadījumā iepriekšējais katalogs paliek. Skenerī redzams admin paneļa nosūtītais `DataToScaner.txt` faila datums un jauno, mainīto un noņemto preču skaits. Lokālais admin panelis automātiski nosūta pilnu katalogu ierīcei tās pirmajā autorizācijas pieprasījumā; ja katalogs vēl nav ielādēts, pieprasījums tiek gaidīts līdz faila ielādei.
+Kad admin panelī atkārtoti ielādē un izsūta pilnu `DataToScaner.txt` katalogu, tālrunis to saņem pa apstiprinātām daļām (gzip saspiestas pa 800 precēm, ja pārlūks to atbalsta, citādi 200 nesaspiestas) un aizvieto iepriekšējo katalogu tikai pēc visu daļu saņemšanas. Katalogs tiek sagatavots un saspiests vienu reizi visiem tālruņiem; vienam tālrunim admin sūta līdz četrām daļām paralēli, gaidot apstiprinājumu, un vienlaikus apkalpo ne vairāk kā divus tālruņus (pārējie gaida rindā). Nepilnas pārraides vai nederīga/tukša faila gadījumā iepriekšējais katalogs paliek. Skenerī redzams admin paneļa nosūtītais `DataToScaner.txt` faila datums un jauno, mainīto un noņemto preču skaits. Admin panelis automātiski nosūta pilnu katalogu ierīcei tās pirmajā autorizācijas pieprasījumā; ja ierīcei jau ir tāda paša `DataToScaner.txt` datuma katalogs, tas netiek sūtīts atkārtoti. Ja katalogs vēl nav ielādēts, pieprasījums tiek gaidīts līdz faila ielādei.
 
 ## Datu un drošības ierobežojumi
 
@@ -80,7 +90,6 @@ Admin panelis APK būvēšanas darbplūsmā nav iekļauts.
 | `manifest.json` | PWA nosaukums, sākuma adrese un instalēšanas ikonas |
 | `sw.js` | PWA kešošana un bezsaistes sākuma lapas atgriešana |
 | `icons/` | PWA un iOS ikonas |
-| `admin.html` | Lokāli testējamais admin panelis; netiek publicēts |
 | `.github/workflows/build-apk.yml` | Android debug APK izveides darbplūsma |
 | `CHANGELOG.md` | Lietotājam nozīmīgo izmaiņu vēsture |
 
@@ -88,4 +97,4 @@ Admin panelis APK būvēšanas darbplūsmā nav iekļauts.
 
 `CHANGELOG.md` uztur īsu, hronoloģisku lietotājam redzamo izmaiņu sarakstu. Nepublicētas izmaiņas liek sadaļā **Unreleased**; laidiena sadaļai piešķir versiju un datumu tikai tad, kad versija tiešām ir publicēta.
 
-HTML lapu virsrakstos ir `V2.29`, bet `package.json` norāda `1.0.0`; projektā vēl nav viena automatizēta versijas avota. Tādēļ šie skaitļi nav uzskatāmi par savstarpēji saskaņotu laidiena versiju.
+Skenera (`index.html`) versija ir `V2.32`, admin panelim ir sava numerācija privātajā repo, bet `package.json` norāda `1.0.0`; projektā vēl nav viena automatizēta versijas avota. Tādēļ šie skaitļi nav uzskatāmi par savstarpēji saskaņotu laidiena versiju.
