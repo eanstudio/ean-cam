@@ -6,6 +6,7 @@
 
 ### Mainīts
 
+- Uzlabota veikala QR skenēšana iPad/iPhone: kameras atļauja tiek pieprasīta pirms skenēšanas, pievienots vienkāršāks kameras palaišanas mēģinājums un rādīts kameras kļūdas iemesls.
 - Pievienota lietotnes instalēšanas josla: Android ierīcēs poga "Instalēt", iPhone/iPad — instrukcija (Kopīgot → Add to Home Screen). Josla neparādās instalētā lietotnē un to var aizvērt.
 - Labota iPhone/iPad problēma: pēc "Add to Home Screen" instalētā lietotne zaudēja veikala QR saiti un klusi pieslēdzās noklusējuma veikalam, tāpēc administrators neredzēja pieprasījumu. Tagad, ja veikals nav izvēlēts, lietotne pirms vārda ievades piedāvā noskenēt veikala QR vai ielīmēt saiti; PWA manifests arī iekļauj izvēlēto veikalu sākuma adresē.
 - Preču bāzes izsūtīšana vairākiem tālruņiem optimizēta: katalogs tiek sagatavots un saspiests (gzip) vienu reizi, daļas ir lielākas, vienlaikus tiek apkalpoti ne vairāk kā 2 tālruņi, un tālrunis ar jau aktuālu bāzi to automātiski nesaņem atkārtoti. Vecākas lietotnes versijas turpina saņemt nesaspiestu bāzi.
