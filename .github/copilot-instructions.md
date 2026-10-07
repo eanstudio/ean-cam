@@ -23,6 +23,7 @@
 - Abi repozitoriji atveras kopā ar `D:\Projekti\EAN Studio\EAN Studio.code-workspace` (`ean-cam` — publiskais PWA, `ean-cam-admin` — privātais panelis). Katram ir sava Git vēsture.
 - Skenera (`index.html`) un admin protokola izmaiņas jāskata kopā: MQTT tēmas un ziņu formāti ir kopīgs līgums (`auth_req`, `auth/<deviceId>`, `catalog/<deviceId>`, `catalog_ack`, `price_update`).
 - Kataloga pārraide: admin sagatavo daļas (gzip+base64 laukā `gz`, vai nesaspiests `items`), tālrunis apstiprina katru daļu ar `catalog_ack`. Skeneris autorizācijas pieprasījumā norāda `catalogGz` un `catalogModifiedAt`.
+- Skenējuma ACK `ok` nozīmē pieņemtu vai idempotenti atkārtoti saņemtu operāciju; `duplicate_label` nozīmē, ka admin noraidīja cita skenējuma ID cenu zīmes EAN dublikātu. Tikai `ok` drīkst atzīmēt skenējumu kā sinhronizētu.
 - Izlaišanas secība, ja mainās protokols: vispirms publicē skeneri (`ean-cam`), tad lieto jauno admin versiju.
 
 ## 3. Stingrie drošības un koda integritātes noteikumi

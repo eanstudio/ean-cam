@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.37</title>
+  <title>EAN Skeneris Pro V2.38</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -99,7 +99,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.37 — Palielināts iPad kameras laukums un nolasīšanas zona; samazināta iOS skenēšanas slodze. V2.36 — iPad/iPhone kamera skenē augstākā izšķirtspējā un nepārtraukti fokusējas.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.38 — Cita tālruņa jau pievienota cenu zīme tiek noraidīta ar brīdinājumu, nevis kļūdaini atzīmēta kā sinhronizēta.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -1962,16 +1962,9 @@
             }
             if (topic.endsWith('/catalog_ack')) return;
 
-            // TŪLĪTĒJS APSTIPRINĀJUMS: ATJAUNINA PUNKTU ZAĻĀ KRĀSĀ BEZ LOGA AIZVĒRŠANAS!
+            // Apstrādājam admin apstiprinājumu vai skaidru cenu zīmes dublikāta noraidījumu.
             if (topic.includes(`/ack/${deviceId}`) && (payload.opId || payload.scanId)) {
-              const targetScanId = payload.scanId || payload.opId;
-              await acknowledgeOperation(payload.opId || payload.scanId, payload.scanId);
-              
-              const memItem = recentScansMemory.find(x => x.id === targetScanId || x.id === payload.scanId || x.id === payload.opId);
-              if (memItem) {
-                memItem.synced = true;
-                renderRecentScans();
-              }
+              await handleOperationAcknowledgement(payload);
               return;
             }
 
@@ -2057,6 +2050,51 @@
         renderRecentScans();
       }
       updateSyncQueueBadge();
+    }
+
+    async function handleOperationAcknowledgement(payload) {
+      const targetScanId = payload.scanId || payload.opId;
+      if (payload.status === 'duplicate_label') {
+        const rejectedScan = await rejectDuplicateLabelOperation(payload.opId || payload.scanId, payload.scanId);
+        const rejectedEan = rejectedScan?.ean || 'Prece';
+        playAudioTone('warning');
+        triggerHaptic('warning');
+        showScanToast('⚠️ Prece jau ir cenu zīmēs', rejectedEan, rejectedScan?.price || '0.00', null, 3500);
+        return;
+      }
+
+      await acknowledgeOperation(payload.opId || payload.scanId, payload.scanId);
+      const memItem = recentScansMemory.find(x => x.id === targetScanId || x.id === payload.scanId || x.id === payload.opId);
+      if (memItem) {
+        memItem.synced = true;
+        renderRecentScans();
+      }
+    }
+
+    async function rejectDuplicateLabelOperation(opId, scanId) {
+      if (!opId || !scanId) throw new Error('Cenu zīmes dublikāta apstiprinājumā trūkst operācijas vai skenējuma ID.');
+      const db = await openDb();
+      let rejectedScan = recentScansMemory.find(scan => scan.id === scanId) || null;
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction([OUTBOX_STORE, 'scans'], 'readwrite');
+        const outboxStore = tx.objectStore(OUTBOX_STORE);
+        const scansStore = tx.objectStore('scans');
+        const scanRequest = scansStore.get(scanId);
+        scanRequest.onsuccess = () => {
+          if (scanRequest.result) rejectedScan = scanRequest.result;
+          scansStore.delete(scanId);
+          outboxStore.delete(opId);
+        };
+        scanRequest.onerror = () => reject(scanRequest.error || new Error('Neizdevās atrast noraidīto skenējumu.'));
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error || new Error('Neizdevās noņemt noraidīto cenu zīmes dublikātu.'));
+        tx.onabort = () => reject(tx.error || new Error('Noraidītā cenu zīmes dublikāta dzēšana tika atcelta.'));
+      });
+
+      recentScansMemory = recentScansMemory.filter(scan => scan.id !== scanId);
+      renderRecentScans();
+      updateSyncQueueBadge();
+      return rejectedScan;
     }
 
     async function flushOutbox() {
@@ -2617,7 +2655,7 @@
       }
     }
 
-    function showScanToast(name, ean, price, qty) {
+    function showScanToast(name, ean, price, qty, duration = 1400) {
       const overlay = document.getElementById('toastScanOverlay');
       document.getElementById('toastScanTitle').innerText = name;
       document.getElementById('toastScanSub').innerText = `${ean} • ${price} €`;
@@ -2626,7 +2664,7 @@
       else { qtyEl.classList.add('hidden'); }
       overlay.classList.remove('hidden');
       clearTimeout(window._toastTimeout);
-      window._toastTimeout = setTimeout(() => { overlay.classList.add('hidden'); }, 1400);
+      window._toastTimeout = setTimeout(() => { overlay.classList.add('hidden'); }, duration);
     }
 
     async function openCatalogSearchModal() {
@@ -3351,7 +3389,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.37';
+    const APP_UPDATE_VERSION = '2.38';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;
