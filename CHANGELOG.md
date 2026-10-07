@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### Mainīts
+
+- Skenera galvenais ekrāns ir fiksēts tālruņa redzamajā augstumā; ritinās tikai skenēto preču saraksts.
+- Sarakstā katrā režīmā saglabā un rāda pēdējās 50 preces. Inventūras rindai pieskaroties, daudzumu var labot uzreiz, un korekcija tiek sinhronizēta ar admin paneli.
+- Pievienota vecāku šī veikala inventūras skenējumu meklēšana pēc nosaukuma vai svītrkoda visā tālruņa lokālajā vēsturē, lai arī ārpus pēdējām 50 rindām varētu izlabot daudzumu bez admin paneļa.
+- Cenu zīmju un pārcenošanas daudzums arī labošanas laikā paliek fiksēts uz 1.
+- Atjaunināta PWA kešatmiņas versija.
+
 ### Lokāli testēts, nav publicēts
 
 - Admin paneļa veikalu profilu pārslēgšana, izveide, pārdēvēšana un arhivēšana/atjaunošana.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.30</title>
+  <title>EAN Skeneris Pro V2.31</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -51,7 +51,22 @@
     .numbtn:active { transform: scale(0.92); background-color: rgba(255, 255, 255, 0.25); }
     .smooth-scroll-list { -webkit-overflow-scrolling: touch; contain: content; }
     .neon-pulse-emerald { box-shadow: 0 0 10px 1px rgba(16, 185, 129, 0.8); }
-    body { min-height: 100vh; min-height: 100dvh; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body { min-height: 0; height: 100vh; height: 100dvh; }
+    @media (max-height: 600px) {
+      #cameraBoxContainer { height: 18vh; min-height: 6rem; max-height: 22vh; aspect-ratio: auto; }
+      main { gap: 0.375rem; }
+      #catalogStatusCard { padding: 0.375rem 0.5rem; }
+    }
+    @media (max-height: 450px) {
+      #cameraBoxContainer { height: 12vh; min-height: 3rem; max-height: 17vh; }
+      main { gap: 0.125rem; padding-top: 0.125rem; padding-bottom: 0.125rem; }
+      main > div.grid button { padding-top: 0.1rem; padding-bottom: 0.1rem; }
+      #catalogStatusCard { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+      #catalogSyncStatus { display: none; }
+      main > div.flex-1 { padding: 0.375rem; }
+      main > div.flex-1 > div:first-child button { min-height: 1.75rem; padding: 0.2rem 0.5rem; }
+    }
 
     @keyframes scanFlashGPU {
       0% { box-shadow: inset 0 0 0 4px var(--flash-color, #10b981), 0 0 25px var(--flash-glow, rgba(16, 185, 129, 0.85)); }
@@ -74,13 +89,13 @@
     }
   </style>
 </head>
-<body class="min-h-full flex flex-col antialiased touch-manipulation overflow-x-hidden overflow-y-auto bg-slate-950 text-slate-100">
+<body class="h-full flex flex-col antialiased touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
   <aside id="appUpdatePrompt" class="hidden fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-lg rounded-2xl border border-emerald-400/30 bg-slate-900/95 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:inset-x-4 sm:bottom-4" role="status" aria-live="polite" aria-labelledby="appUpdateTitle">
     <div class="flex items-start gap-3">
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.30 — Jauno versiju var apstiprināt vai atlikt; lietotne vairs nepārlādējas pati.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.31 — Fiksēts skenera ekrāns, pēdējās 50 preces un vecāku skenējumu meklēšana/labošana.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -143,7 +158,7 @@
   </div>
 
   <!-- Kameras Bloks -->
-  <main class="flex-1 min-h-0 flex flex-col px-3 py-1 gap-2 overflow-visible relative">
+  <main class="flex-1 min-h-0 flex flex-col px-3 py-1 gap-2 overflow-hidden relative">
     <div id="cameraBoxContainer" class="relative w-full aspect-[4/3] min-h-[9rem] max-h-[27vh] shrink-0 bg-black rounded-3xl overflow-hidden border border-white/15 shadow-2xl flex items-center justify-center transition-all">
       <div id="reader" class="w-full h-full"></div>
       <div class="laser-viewport" id="laserContainer"><div id="scanLaserLine" class="scanner-laser-line"></div></div>
@@ -190,7 +205,7 @@
     </div>
 
     <!-- Pamatpogas un režīma slēdži -->
-    <div class="grid grid-cols-3 gap-2 w-full">
+    <div class="grid grid-cols-3 gap-2 w-full shrink-0">
       <button type="button" onclick="openManualEanModal()" class="py-2.5 px-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-2xl shadow-lg border border-emerald-400/30 flex items-center justify-center gap-1.5 transition">
         <span class="text-base">⌨</span>
         <span class="uppercase font-mono tracking-tight text-[11px] truncate">Kods</span>
@@ -205,7 +220,7 @@
       </button>
     </div>
 
-    <div id="catalogStatusCard" class="flex justify-between items-center gap-2 px-3 py-2 bg-slate-900/80 border border-white/10 rounded-xl text-xs font-mono text-slate-400">
+    <div id="catalogStatusCard" class="flex justify-between items-center gap-2 px-3 py-2 bg-slate-900/80 border border-white/10 rounded-xl text-xs font-mono text-slate-400 shrink-0">
       <div class="flex min-w-0 flex-col gap-0.5">
         <span id="catalogStatsText" class="font-semibold text-slate-200">Bāze: 0 preces</span>
         <span id="catalogSyncStatus" class="text-[11px] sm:text-xs text-slate-400 leading-snug break-words" role="status" aria-live="polite">Saņemšanas statuss nav zināms</span>
@@ -213,18 +228,39 @@
     </div>
 
     <!-- Saraksts -->
-    <div class="flex-1 flex flex-col min-h-[10rem] bg-slate-900 border border-white/10 rounded-2xl p-2.5 overflow-hidden">
+    <div class="flex-1 flex flex-col min-h-0 bg-slate-900 border border-white/10 rounded-2xl p-2.5 overflow-hidden">
       <div class="flex items-center justify-between pb-1.5 border-b border-white/10">
-        <span id="listTitleLabel" class="text-xs font-bold uppercase text-slate-300 font-mono">Pēdējās 20 inventūras preces:</span>
-        <button type="button" onclick="clearLocalScansHistory()" class="min-h-11 px-3 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1" aria-label="Notīrīt šī tālruņa skenējumu vēsturi">
+        <span id="listTitleLabel" class="min-w-0 text-[10px] sm:text-xs font-bold uppercase text-slate-300 font-mono">Pēdējās 50 inventūras preces · pieskaries, lai labotu:</span>
+        <div class="flex items-center gap-1 shrink-0">
+        <button type="button" onclick="openScanHistorySearch()" class="min-h-11 px-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-400/25 active:scale-95 transition text-xs font-medium flex items-center gap-1" aria-label="Meklēt un labot vecāku inventūras skenējumu" title="Meklēt un labot vecākus inventūras skenējumus">
+          <span>Labot vecāku</span> <span aria-hidden="true">🔍</span>
+        </button>
+        <button type="button" onclick="clearLocalScansHistory()" class="min-h-11 px-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/25 active:scale-95 transition text-xs font-medium flex items-center gap-1" aria-label="Notīrīt šī tālruņa skenējumu vēsturi">
           <span>Notīrīt</span> <span>🗑️</span>
         </button>
+        </div>
       </div>
       <div id="recentScansList" class="smooth-scroll-list flex-1 overflow-y-auto divide-y divide-white/5 space-y-1 pt-1">
         <p class="text-center text-xs text-slate-500 py-4 font-mono">Vēl nav noskenētu preču</p>
       </div>
     </div>
   </main>
+
+  <div id="scanHistorySearchModal" role="dialog" aria-modal="true" aria-labelledby="scanHistorySearchTitle" class="hidden fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col p-3 sm:p-5">
+    <div class="w-full max-w-lg mx-auto flex-1 min-h-0 flex flex-col bg-slate-900 border border-white/10 rounded-3xl p-4 space-y-3 overflow-hidden shadow-2xl">
+      <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/10">
+        <div>
+          <h3 id="scanHistorySearchTitle" class="text-sm font-bold text-white uppercase font-mono">Labot vecāku skenējumu</h3>
+          <p class="mt-1 text-[11px] text-slate-400">Meklē visā šī veikala inventūras vēsturē šajā tālrunī.</p>
+        </div>
+        <button type="button" onclick="closeScanHistorySearch()" class="min-h-11 min-w-11 rounded-xl bg-white/5 border border-white/10 text-slate-300 flex items-center justify-center font-bold" aria-label="Aizvērt skenējumu meklēšanu">✕</button>
+      </div>
+      <input type="search" id="scanHistorySearchInput" aria-label="Meklēt inventūras skenējumu pēc nosaukuma vai svītrkoda" placeholder="Preces nosaukums vai svītrkods..." oninput="renderScanHistorySearchResults(this.value)" class="w-full h-12 shrink-0 px-4 bg-black/60 border border-white/20 rounded-2xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <div id="scanHistorySearchResults" class="smooth-scroll-list flex-1 min-h-0 overflow-y-auto divide-y divide-white/5 space-y-1 pr-1" aria-live="polite">
+        <p class="text-center text-xs text-slate-500 py-8">Ierakstiet vismaz 2 burtus vai ciparus, lai atrastu skenējumu.</p>
+      </div>
+    </div>
+  </div>
 
   <!-- MODĀLIS: Diagnostika -->
   <div id="diagnosticModal" role="dialog" aria-modal="true" aria-labelledby="diagnosticModalTitle" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -567,7 +603,35 @@
     let isCameraAsleep = false;
     const IDLE_TIMEOUT_MS = 60000;
 
+    const RECENT_SCAN_LIMIT = 50;
     let recentScansMemory = [];
+    let scanHistorySearchEntries = [];
+    function getRecentScansForRoom(scans, roomId) {
+      const modeCounts = new Map();
+      return scans
+        .filter(scan => !scan.storeRoomId || scan.storeRoomId === roomId)
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .filter(scan => {
+          const count = modeCounts.get(scan.mode) || 0;
+          if (count >= RECENT_SCAN_LIMIT) return false;
+          modeCounts.set(scan.mode, count + 1);
+          return true;
+        });
+    }
+
+    function rememberRecentScan(scan) {
+      recentScansMemory.unshift(scan);
+      let retainedForMode = 0;
+      for (let index = 0; index < recentScansMemory.length; index++) {
+        if (recentScansMemory[index].mode !== scan.mode) continue;
+        retainedForMode++;
+        if (retainedForMode > RECENT_SCAN_LIMIT) {
+          recentScansMemory.splice(index, 1);
+          break;
+        }
+      }
+    }
+
     let isScanCooldown = false;
     let lastScannedCode = '';
     let lastScannedTime = 0;
@@ -827,7 +891,7 @@
 
       const titleEl = document.getElementById('listTitleLabel');
       if (titleEl) {
-        if (appMode === 'inventory') titleEl.innerText = "Pēdējās 20 inventūras preces:";
+        if (appMode === 'inventory') titleEl.innerText = `Pēdējās ${RECENT_SCAN_LIMIT} inventūras preces · pieskaries, lai labotu:`;
         else if (appMode === 'labels') titleEl.innerText = "Cenu zīmju rinda:";
         else if (appMode === 'repricing') titleEl.innerText = "Pārcenotās preces:";
         else titleEl.innerText = "Pārbaudītās preces:";
@@ -2183,10 +2247,7 @@
         updateModesVisibility();
 
         const allScans = await getAllScansFromDb();
-        recentScansMemory = allScans
-          .filter(scan => scan.storeRoomId === store.roomId)
-          .sort((a, b) => b.timestamp - a.timestamp)
-          .slice(0, 20);
+        recentScansMemory = getRecentScansForRoom(allScans, store.roomId);
         renderRecentScans();
         await updateSyncQueueBadge();
         initMqtt();
@@ -2265,8 +2326,7 @@
           synced: false
         };
 
-        recentScansMemory.unshift(record);
-        if (recentScansMemory.length > 20) recentScansMemory.pop();
+        rememberRecentScan(record);
         renderRecentScans();
         await saveScanToDb(record);
         sendScanToMqtt(record);
@@ -2308,8 +2368,7 @@
           synced: false
         };
 
-        recentScansMemory.unshift(record);
-        if (recentScansMemory.length > 20) recentScansMemory.pop();
+        rememberRecentScan(record);
         renderRecentScans();
         await saveScanToDb(record);
         sendScanToMqtt(record);
@@ -2650,8 +2709,7 @@
         }
       }
 
-      recentScansMemory.unshift(scanRecord);
-      if (recentScansMemory.length > 20) recentScansMemory.pop();
+      rememberRecentScan(scanRecord);
       renderRecentScans();
       await saveScanToDb(scanRecord);
       sendScanToMqtt(scanRecord);
@@ -2695,6 +2753,9 @@
           ? `<span class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs sm:text-sm">${it.price || '0.00'} €</span>`
           : `<span class="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-mono font-bold text-xs sm:text-sm">${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}</span>`;
 
+        row.setAttribute('role', 'button');
+        row.tabIndex = 0;
+        row.setAttribute('aria-label', `${it.name}, ${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}. Pieskaries, lai labotu.`);
         row.innerHTML = `
           <div class="truncate flex-1">
             <div class="flex items-center gap-1.5">${syncStatus}<p class="text-xs sm:text-sm font-semibold text-white truncate">${it.name}</p></div>
@@ -2702,8 +2763,100 @@
           </div>
           <div class="text-right shrink-0">${badgeHtml}</div>
         `;
+        row.onkeydown = event => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          openEditModal(it.id);
+        };
         list.appendChild(row);
       });
+    }
+
+    async function openScanHistorySearch() {
+      await stopCameraSafely();
+      const modal = document.getElementById('scanHistorySearchModal');
+      const input = document.getElementById('scanHistorySearchInput');
+      const results = document.getElementById('scanHistorySearchResults');
+      try {
+        const allScans = await getAllScansFromDb();
+        const roomId = getRoomId();
+        scanHistorySearchEntries = allScans
+          .filter(scan => scan.mode === 'inventory' && (!scan.storeRoomId || scan.storeRoomId === roomId))
+          .sort((a, b) => b.timestamp - a.timestamp);
+        results.textContent = scanHistorySearchEntries.length
+          ? 'Ierakstiet vismaz 2 burtus vai ciparus, lai atrastu skenējumu.'
+          : 'Šim veikalam šajā tālrunī nav saglabātu inventūras skenējumu.';
+      } catch (error) {
+        console.error('Neizdevās ielādēt inventūras skenējumu vēsturi:', error);
+        results.textContent = 'Skenējumu vēsturi neizdevās nolasīt. Mēģiniet vēlreiz.';
+      }
+      input.value = '';
+      modal.classList.remove('hidden');
+      setTimeout(() => input.focus(), 150);
+    }
+
+    function closeScanHistorySearch() {
+      document.getElementById('scanHistorySearchModal').classList.add('hidden');
+      scanHistorySearchEntries = [];
+      resetActivityTimer();
+      startCameraWithSelectedLens();
+    }
+
+    function renderScanHistorySearchResults(query) {
+      const results = document.getElementById('scanHistorySearchResults');
+      const searchTerm = query.trim().toLocaleLowerCase('lv-LV');
+      results.replaceChildren();
+      if (searchTerm.length < 2) {
+        const prompt = document.createElement('p');
+        prompt.className = 'text-center text-xs text-slate-500 py-8';
+        prompt.textContent = 'Ierakstiet vismaz 2 burtus vai ciparus, lai atrastu skenējumu.';
+        results.appendChild(prompt);
+        return;
+      }
+
+      const matches = scanHistorySearchEntries.filter(scan =>
+        String(scan.name || '').toLocaleLowerCase('lv-LV').includes(searchTerm) ||
+        String(scan.ean || '').includes(searchTerm)
+      );
+      if (!matches.length) {
+        const empty = document.createElement('p');
+        empty.className = 'text-center text-xs text-slate-500 py-8';
+        empty.textContent = 'Skenējumi nav atrasti.';
+        results.appendChild(empty);
+        return;
+      }
+
+      matches.slice(0, 100).forEach(scan => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'w-full p-3 rounded-xl text-left hover:bg-white/5 active:bg-white/10 transition flex items-center justify-between gap-3';
+        const details = document.createElement('span');
+        details.className = 'min-w-0';
+        const name = document.createElement('span');
+        name.className = 'block truncate text-sm font-semibold text-white';
+        name.textContent = scan.name || 'Nezināma prece';
+        const metadata = document.createElement('span');
+        metadata.className = 'block mt-1 truncate text-[11px] font-mono text-slate-400';
+        metadata.textContent = `${scan.ean || 'Bez koda'} · ${new Date(scan.timestamp).toLocaleString('lv-LV')}`;
+        details.append(name, metadata);
+        const quantity = document.createElement('span');
+        quantity.className = 'shrink-0 rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-xs font-bold font-mono text-emerald-300';
+        quantity.textContent = `${scan.qty} ${Number.isInteger(scan.qty) ? 'gab.' : 'kg'}`;
+        button.append(details, quantity);
+        button.setAttribute('aria-label', `${scan.name || 'Prece'}, pašreizējais daudzums ${scan.qty}. Atvērt labošanai.`);
+        button.onclick = async () => {
+          document.getElementById('scanHistorySearchModal').classList.add('hidden');
+          await openEditModal(scan.id);
+        };
+        results.appendChild(button);
+      });
+
+      if (matches.length > 100) {
+        const limitNotice = document.createElement('p');
+        limitNotice.className = 'px-3 py-2 text-center text-[11px] text-slate-500';
+        limitNotice.textContent = `Rādītas pirmās 100 no ${matches.length} atrastajām precēm. Precizējiet meklējumu.`;
+        results.appendChild(limitNotice);
+      }
     }
 
     // NOVĒRSTS DAUDZUMA LABOŠANAS BUG: PAREIZI RĀDA GAB / KG, NEVIS €!
@@ -2785,9 +2938,9 @@
       let newQty = parseFloat(editQtyValue);
       let newPrice = parseFloat(editPriceValue);
 
-      if (isRepriceMode) {
+      if (isRepriceMode || item.mode === 'labels') {
         newQty = 1;
-        if (isNaN(newPrice) || newPrice < 0) { alert("Lūdzu, ievadiet derīgu cenu!"); return; }
+        if (isRepriceMode && (isNaN(newPrice) || newPrice < 0)) { alert("Lūdzu, ievadiet derīgu cenu!"); return; }
       } else {
         if (isNaN(newQty) || newQty <= 0) { alert("Lūdzu, ievadiet derīgu daudzumu!"); return; }
         newPrice = parseFloat(item.price) || 0.00;
@@ -2954,6 +3107,7 @@
         ['diagnosticModal', closeDiagnosticModal],
         ['settingsModal', closeSettingsModal],
         ['catalogSearchModal', closeCatalogSearchModal],
+        ['scanHistorySearchModal', closeScanHistorySearch],
         ['barcodeDisplayModal', closeBarcodeModal],
         ['manualEanModal', closeManualEanModal],
         ['qtyModal', cancelScan],
@@ -2969,7 +3123,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.30';
+    const APP_UPDATE_VERSION = '2.31';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;
@@ -3054,10 +3208,7 @@
 
       const activeRoomId = getRoomId();
       const allScans = await getAllScansFromDb();
-      recentScansMemory = allScans
-        .filter(scan => !scan.storeRoomId || scan.storeRoomId === activeRoomId)
-        .sort((a, b) => b.timestamp - a.timestamp)
-        .slice(0, 20);
+      recentScansMemory = getRecentScansForRoom(allScans, activeRoomId);
       renderRecentScans();
 
       checkWorkerSessionOnStartup();
