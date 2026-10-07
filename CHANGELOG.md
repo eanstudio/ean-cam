@@ -10,6 +10,15 @@
 - Admin paneļa rīkjoslas un preču bāzes statusa attēlojuma uzlabojumi.
 - Veikala izveides dialogam pievienota atcelšana un aizvēršana ar Escape.
 
+## [2.30] — 2026-10-07
+
+### Mainīts
+
+- PWA atjauninājumam tiek piedāvāts īss laidiena apraksts ar izvēli atjaunināt tagad vai atlikt; lietotne nepārlādējas bez lietotāja apstiprinājuma.
+- Atvērta un redzama lietotne pārbauda jaunu versiju aptuveni reizi minūtē un, atgriežoties priekšplānā, lai aktīva sesija varētu saņemt atjauninājuma piedāvājumu bez manuālas pārlādes.
+- Pēc apstiprinātas atjaunināšanas lapa pārlādējas, bet atjauninājums nemaina lokāli saglabāto skenējumu rindu.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.29] — 2026-10-06
 
 ### Mainīts
