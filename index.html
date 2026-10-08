@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.38</title>
+  <title>EAN Skeneris Pro V2.39</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -99,7 +99,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.38 — Cita tālruņa jau pievienota cenu zīme tiek noraidīta ar brīdinājumu, nevis kļūdaini atzīmēta kā sinhronizēta.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.39 — Noliktavas atlikuma rādīšanu tālruņos kontrolē Admin; cenu pārbaudes rezultāts paliek redzams līdz nākamajam skenējumam.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -207,10 +207,11 @@
         <p class="text-xs text-slate-400 mt-1">Ieslēdz kameru, lai turpinātu skenēt.</p>
       </div>
 
-      <div id="toastScanOverlay" class="hidden absolute inset-x-3 top-3 bg-emerald-600/95 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between z-40 transition transform">
+      <div id="toastScanOverlay" role="status" aria-live="polite" class="hidden absolute inset-x-3 top-3 bg-emerald-600/95 text-white p-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center justify-between z-40 transition transform">
         <div class="truncate flex-1 pr-2">
           <p id="toastScanTitle" class="text-sm font-bold truncate">Prece</p>
           <p id="toastScanSub" class="text-xs font-mono text-emerald-100 mt-0.5">0000000000000 • 0.00 €</p>
+          <p id="toastScanStock" class="hidden text-xs font-semibold text-white mt-1"></p>
         </div>
         <span id="toastScanQty" class="px-2.5 py-1 bg-black/35 rounded-xl text-sm font-mono font-bold">+1</span>
       </div>
@@ -442,6 +443,7 @@
           <span id="modalItemPrice" class="shrink-0 px-2.5 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-sm font-mono font-bold">0.00 €</span>
         </div>
         <p id="modalItemEan" class="text-xs font-mono text-slate-400 tracking-wider">0000000000000</p>
+        <p id="qtyModalStockInfo" class="hidden text-xs font-semibold text-sky-300"></p>
       </div>
 
       <div id="unknownItemBlock" class="hidden space-y-2.5 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
@@ -616,6 +618,15 @@
     let authRetryInterval = null;
     let pingInterval = null;
     let isAuthRequiredByAdmin = localStorage.getItem('ean_auth_required') !== 'false';
+    const PHONE_STOCK_DISPLAY_STORAGE_KEY = 'ean_phone_stock_display_modes_v1';
+    const PHONE_STOCK_DISPLAY_DEFAULTS = Object.freeze({
+      inventory: false,
+      labels: false,
+      repricing: false,
+      pricecheck: true
+    });
+    const PHONE_STOCK_DISPLAY_MODES = Object.keys(PHONE_STOCK_DISPLAY_DEFAULTS);
+    let phoneStockDisplayModes = { ...PHONE_STOCK_DISPLAY_DEFAULTS };
 
     (function reconcileRoomState() {
       try {
@@ -809,6 +820,7 @@
     }
 
     function updateModesVisibility() {
+      const previousMode = appMode;
       const lockInv = document.getElementById('lockIcon_inventory');
       const lockLbl = document.getElementById('lockIcon_labels');
       const lockRep = document.getElementById('lockIcon_repricing');
@@ -837,6 +849,7 @@
           localStorage.setItem('ean_app_mode', 'inventory');
         }
       }
+      if (previousMode !== appMode) dismissScanToast();
       renderModeButtonsState();
     }
 
@@ -858,6 +871,7 @@
         return;
       }
 
+      if (mode !== appMode) dismissScanToast();
       appMode = mode;
       localStorage.setItem('ean_app_mode', mode);
       renderModeButtonsState();
@@ -1656,6 +1670,90 @@
       return localStorage.getItem('ean_room_id') || 'veikals-1';
     }
 
+    function getPhoneStockDisplayStorageKey(roomId = getRoomId()) {
+      return `${PHONE_STOCK_DISPLAY_STORAGE_KEY}:${roomId}`;
+    }
+
+    function normalizePhoneStockDisplayModes(value) {
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        throw new Error('Tālruņa atlikuma redzamības iestatījumam jābūt objektam.');
+      }
+      if (!PHONE_STOCK_DISPLAY_MODES.some(mode => Object.prototype.hasOwnProperty.call(value, mode))) {
+        throw new Error('Tālruņa atlikuma iestatījumā nav atbalstītu režīmu.');
+      }
+
+      const normalized = { ...PHONE_STOCK_DISPLAY_DEFAULTS };
+      PHONE_STOCK_DISPLAY_MODES.forEach(mode => {
+        if (Object.prototype.hasOwnProperty.call(value, mode)) {
+          if (typeof value[mode] !== 'boolean') {
+            throw new Error(`Tālruņa atlikuma redzamības iestatījumam "${mode}" jābūt true vai false.`);
+          }
+          normalized[mode] = value[mode];
+        }
+      });
+      return normalized;
+    }
+
+    function loadPhoneStockDisplayModes() {
+      phoneStockDisplayModes = { ...PHONE_STOCK_DISPLAY_DEFAULTS };
+      try {
+        const saved = localStorage.getItem(getPhoneStockDisplayStorageKey());
+        if (saved !== null) phoneStockDisplayModes = normalizePhoneStockDisplayModes(JSON.parse(saved));
+      } catch (error) {
+        phoneStockDisplayModes = { ...PHONE_STOCK_DISPLAY_DEFAULTS };
+        console.error('Neizdevās ielādēt tālruņa atlikuma redzamības iestatījumus; tiks lietoti noklusējumi:', error);
+      }
+    }
+
+    function applyPhoneStockDisplayModesFromAdmin(value) {
+      let nextModes;
+      try {
+        nextModes = normalizePhoneStockDisplayModes(value);
+      } catch (error) {
+        console.error('Admin nosūtīja nederīgus tālruņa atlikuma redzamības iestatījumus:', error);
+        return false;
+      }
+
+      phoneStockDisplayModes = nextModes;
+      try {
+        localStorage.setItem(getPhoneStockDisplayStorageKey(), JSON.stringify(phoneStockDisplayModes));
+      } catch (error) {
+        console.error('Neizdevās saglabāt tālruņa atlikuma redzamības iestatījumus:', error);
+      }
+      dismissScanToast();
+      updateQtyModalStockInfo();
+      return true;
+    }
+
+    function getPhoneStockDisplayText(item, mode) {
+      if (!item || phoneStockDisplayModes[mode] !== true) return null;
+      const rawStock = item.atlikums;
+      if (rawStock === null || rawStock === undefined || (typeof rawStock === 'string' && rawStock.trim() === '')) {
+        return 'Noliktavas atlikums: nav norādīts';
+      }
+      if (typeof rawStock !== 'number' && typeof rawStock !== 'string') {
+        console.error('Katalogā ir nederīga noliktavas atlikuma vērtība:', item.ean, rawStock);
+        return 'Noliktavas atlikums: nederīga vērtība';
+      }
+
+      const stock = Number(rawStock);
+      if (!Number.isFinite(stock)) {
+        console.error('Katalogā ir nederīgs noliktavas atlikums:', item.ean, rawStock);
+        return 'Noliktavas atlikums: nederīga vērtība';
+      }
+      const formattedStock = new Intl.NumberFormat('lv-LV', { maximumFractionDigits: 6 }).format(stock);
+      return `Noliktavas atlikums: ${formattedStock}`;
+    }
+
+    function updateQtyModalStockInfo(ean = activeScanData?.ean, mode = appMode) {
+      const stockInfo = document.getElementById('qtyModalStockInfo');
+      if (!stockInfo) return;
+      const item = ean ? localCatalog.get(String(ean)) : null;
+      const text = getPhoneStockDisplayText(item, mode);
+      stockInfo.innerText = text || '';
+      stockInfo.classList.toggle('hidden', !text);
+    }
+
     function getStoreDisplayName() {
       const hash = window.location.hash.replace('#', '');
       const params = new URLSearchParams(hash);
@@ -1932,6 +2030,10 @@
           try {
             const payload = JSON.parse(msg.toString());
             if (topic.endsWith('/auth_setting')) {
+              if (topic === `ean2026/${getRoomId()}/auth_setting` &&
+                  Object.prototype.hasOwnProperty.call(payload, 'stockDisplayModes')) {
+                applyPhoneStockDisplayModesFromAdmin(payload.stockDisplayModes);
+              }
               isAuthRequiredByAdmin = payload.required !== false;
               localStorage.setItem('ean_auth_required', isAuthRequiredByAdmin ? 'true' : 'false');
               if (!isAuthRequiredByAdmin) {
@@ -2498,6 +2600,8 @@
         history.replaceState(null, '', `${location.pathname}${location.search}#room=${encodeURIComponent(store.roomId)}&store=${encodeURIComponent(store.storeName)}`);
         localStorage.setItem('ean_room_id', store.roomId);
         localStorage.setItem('ean_store_display_name', store.storeName);
+        loadPhoneStockDisplayModes();
+        dismissScanToast();
         const approvalKey = getRoomApprovalSessionKey(store.roomId);
         isDeviceApproved = sessionStorage.getItem(approvalKey) === 'true';
         const approvedAt = parseInt(localStorage.getItem(getRoomApprovalTimeKey(store.roomId)) || '0');
@@ -2542,6 +2646,7 @@
       if (isScanCooldown) return;
       if (cleanEan === lastScannedCode && (now - lastScannedTime < 2400)) return;
 
+      dismissScanToast();
       const item = localCatalog.get(cleanEan);
       const name = item ? item.nosaukums : 'Nezināma prece';
       const basePriceEur = item && item.cena ? parseFloat(item.cena).toFixed(2) : '0.00';
@@ -2554,7 +2659,7 @@
         lastScannedTime = now;
         playAudioTone(item ? 'success' : 'warning');
         triggerHaptic('short');
-        showScanToast(name, cleanEan, basePriceEur, null);
+        showScanToast(name, cleanEan, basePriceEur, null, 0, getPhoneStockDisplayText(item, 'pricecheck'));
         setTimeout(() => { isScanCooldown = false; }, 1400);
         return;
       }
@@ -2568,14 +2673,14 @@
         if (isAlreadyInLabels) {
           playAudioTone('warning');
           triggerHaptic('warning');
-          showScanToast("⚠️ Prece jau ir cenu zīmēs!", cleanEan, basePriceEur, 1);
+          showScanToast("⚠️ Prece jau ir cenu zīmēs!", cleanEan, basePriceEur, 1, 1400, getPhoneStockDisplayText(item, 'labels'));
           setTimeout(() => { isScanCooldown = false; }, 1400);
           return;
         }
 
         playAudioTone('success');
         triggerHaptic('short');
-        showScanToast(name, cleanEan, basePriceEur, 1);
+        showScanToast(name, cleanEan, basePriceEur, 1, 1400, getPhoneStockDisplayText(item, 'labels'));
 
         const record = {
           id: 'lbl_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
@@ -2614,7 +2719,7 @@
         lastScannedTime = now;
         playAudioTone(item ? 'success' : 'warning');
         triggerHaptic('short');
-        showScanToast(name, cleanEan, basePriceEur, 1);
+        showScanToast(name, cleanEan, basePriceEur, 1, 1400, getPhoneStockDisplayText(item, 'inventory'));
 
         const record = {
           id: 'inv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
@@ -2655,16 +2760,29 @@
       }
     }
 
-    function showScanToast(name, ean, price, qty, duration = 1400) {
+    function showScanToast(name, ean, price, qty, duration = 1400, stockText = null) {
       const overlay = document.getElementById('toastScanOverlay');
+      if (!overlay) return;
       document.getElementById('toastScanTitle').innerText = name;
       document.getElementById('toastScanSub').innerText = `${ean} • ${price} €`;
+      const stockEl = document.getElementById('toastScanStock');
+      if (stockEl) {
+        stockEl.innerText = stockText || '';
+        stockEl.classList.toggle('hidden', !stockText);
+      }
       const qtyEl = document.getElementById('toastScanQty');
       if (qty !== null) { qtyEl.innerText = `+${qty}`; qtyEl.classList.remove('hidden'); }
       else { qtyEl.classList.add('hidden'); }
       overlay.classList.remove('hidden');
       clearTimeout(window._toastTimeout);
-      window._toastTimeout = setTimeout(() => { overlay.classList.add('hidden'); }, duration);
+      window._toastTimeout = duration > 0 ? setTimeout(() => { overlay.classList.add('hidden'); }, duration) : null;
+    }
+
+    function dismissScanToast() {
+      clearTimeout(window._toastTimeout);
+      window._toastTimeout = null;
+      document.getElementById('toastScanOverlay')?.classList.add('hidden');
+      document.getElementById('toastScanStock')?.classList.add('hidden');
     }
 
     async function openCatalogSearchModal() {
@@ -2797,6 +2915,7 @@
       document.getElementById('modalItemName').innerText = name;
       document.getElementById('modalItemEan').innerText = ean;
       document.getElementById('modalItemPrice').innerText = `${startingPrice} €`;
+      updateQtyModalStockInfo(ean, appMode);
 
       const unknownBlock = document.getElementById('unknownItemBlock');
       if (isUnknown) { unknownBlock.classList.remove('hidden'); renderModalPhotosGallery(); }
@@ -3389,7 +3508,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.38';
+    const APP_UPDATE_VERSION = '2.39';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;
@@ -3470,6 +3589,7 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       requestWakeLock();
+      loadPhoneStockDisplayModes();
       await loadCatalogFromDb();
 
       const activeRoomId = getRoomId();
