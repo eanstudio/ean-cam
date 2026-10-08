@@ -6,6 +6,7 @@
 
 ### Mainīts
 
+- APP V2.40: veikala QR skenēšana vairs neizmanto Android WebView eksperimentālo `BarcodeDetector`; pāriet uz HTML5-Qrcode JavaScript dekoderu un lielāku QR nolasīšanas apgabalu, nemainot EAN skenēšanas iestatījumus.
 - APP V2.39: noliktavas atlikuma redzamību visos skenera režīmos kontrolē Admin veikala iestatījums; cenu pārbaudes rezultāta kartīte paliek redzama līdz nākamajam skenējumam.
 - Skenēšanas rezultātos, ja režīmam Admin atļāvis atlikuma rādīšanu, atlikums tiek attēlots arī kā nulle vai skaidri norādīts kā trūkstošs/nederīgs.
 - Cenu zīmju dublikāta noraidījums no admin tagad tālrunī parāda brīdinājumu un izņem tikai noraidīto lokālo mēģinājumu; tas vairs netiek kļūdaini attēlots kā sinhronizēts.
