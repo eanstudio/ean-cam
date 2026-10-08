@@ -6,6 +6,7 @@
 
 ### Mainīts
 
+- APP V2.41: katalogam pievienota satura versija un atomiska delta sinhronizācija; telefons ziņo veikala bāzes versiju, lai Admin var izlaist nemainītu katalogu vai sūtīt tikai jaunas/mainītas preces.
 - APP V2.40: veikala QR skenēšana vairs neizmanto Android WebView eksperimentālo `BarcodeDetector`; pāriet uz HTML5-Qrcode JavaScript dekoderu un lielāku QR nolasīšanas apgabalu, nemainot EAN skenēšanas iestatījumus.
 - APP V2.39: noliktavas atlikuma redzamību visos skenera režīmos kontrolē Admin veikala iestatījums; cenu pārbaudes rezultāta kartīte paliek redzama līdz nākamajam skenējumam.
 - Skenēšanas rezultātos, ja režīmam Admin atļāvis atlikuma rādīšanu, atlikums tiek attēlots arī kā nulle vai skaidri norādīts kā trūkstošs/nederīgs.

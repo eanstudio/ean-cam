@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.40</title>
+  <title>EAN Skeneris Pro V2.41</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -99,7 +99,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.40 — Android APK veikala QR skenēšanai izmantots saderīgāks dekoders un plašāks nolasīšanas apgabals.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.41 — Kataloga atjaunināšanai tiek sūtītas tikai jaunās un mainītās preces.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -604,6 +604,7 @@
     let isTorchOn = false;
     let cameraTrack = null;
     let localCatalog = new Map();
+    let activeCatalogSyncMetadata = null;
     let activeScanData = null;
     let currentEditScanId = null;
     let isCameraRunning = false;
@@ -1156,12 +1157,12 @@
       const deviceId = getDeviceId();
       const workerName = getWorkerName();
       const batt = await getBatteryInfo();
+      const catalogSyncAdvertisement = getCatalogSyncAdvertisement(roomId);
       mqttClient.publish(`ean2026/${roomId}/auth_req`, JSON.stringify({
         deviceId,
         workerName,
         battery: batt ? batt.level : null,
-        catalogGz: typeof DecompressionStream !== 'undefined',
-        catalogModifiedAt: getLocalCatalogModifiedAt(),
+        ...catalogSyncAdvertisement,
         requestId: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         time: Date.now()
       }));
@@ -1228,6 +1229,7 @@
           mqttClient.publish(`ean2026/${getRoomId()}/ping`, JSON.stringify({
             deviceId: getDeviceId(),
             workerName: getWorkerName(),
+            ...getCatalogSyncAdvertisement(),
             approved: isDeviceApproved,
             broker: mqttConnectedNames().join('+'),
             time: Date.now()
@@ -1305,7 +1307,7 @@
 
     function openDb() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open('EanScannerDB_v11', 3);
+        const req = indexedDB.open('EanScannerDB_v11', 4);
         req.onupgradeneeded = (e) => {
           const db = req.result;
           if (!db.objectStoreNames.contains('scans')) {
@@ -1320,6 +1322,7 @@
             const transfers = db.createObjectStore('catalogTransfers', { keyPath: 'key' });
             transfers.createIndex('transferId', 'transferId', { unique: false });
           }
+          if (!db.objectStoreNames.contains('catalogMeta')) db.createObjectStore('catalogMeta');
         };
         req.onsuccess = () => {
           const db = req.result;
@@ -1329,7 +1332,10 @@
           };
           resolve(db);
         };
-        req.onblocked = () => console.warn('IndexedDB atjauninājums gaida, līdz tiek aizvērti citi lietotnes logi.');
+        req.onblocked = () => {
+          console.warn('IndexedDB atjauninājums gaida, līdz tiek aizvērti citi lietotnes logi.');
+          showToast('Lietotnes datu atjauninājums gaida', 'Aizveriet citas EAN Skenera cilnes un mēģiniet vēlreiz.', 'warning');
+        };
         req.onerror = () => reject(req.error);
       });
     }
@@ -1411,43 +1417,133 @@
 
     async function loadCatalogFromDb() {
       const db = await openDb();
-      return new Promise((resolve) => {
-        const tx = db.transaction('catalog', 'readonly');
-        const req = tx.objectStore('catalog').getAll();
-        req.onsuccess = () => {
-          const items = req.result || [];
-          localCatalog.clear();
-          items.forEach(it => localCatalog.set(String(it.ean), it));
-          updateCatalogStatsUI();
-          resolve(localCatalog.size);
-        };
-        req.onerror = () => resolve(0);
-      });
+      let count = 0;
+      try {
+        count = await new Promise((resolve, reject) => {
+          const tx = db.transaction('catalog', 'readonly');
+          const req = tx.objectStore('catalog').getAll();
+          req.onsuccess = () => {
+            const items = req.result || [];
+            localCatalog.clear();
+            items.forEach(it => localCatalog.set(String(it.ean), it));
+            updateCatalogStatsUI();
+            resolve(localCatalog.size);
+          };
+          req.onerror = () => reject(req.error || new Error('Neizdevās nolasīt telefona katalogu.'));
+          tx.onerror = () => reject(tx.error || new Error('Neizdevās nolasīt telefona katalogu.'));
+        });
+      } finally {
+        db.close();
+      }
+      try {
+        activeCatalogSyncMetadata = await getActiveCatalogSyncMetadata();
+      } catch (error) {
+        activeCatalogSyncMetadata = null;
+        console.error('Neizdevās ielādēt telefona kataloga versiju:', error);
+      }
+      return count;
+    }
+
+    function normalizeCatalogStock(value) {
+      if (value === null || value === undefined || value === '') return null;
+      const stock = Number(value);
+      if (!Number.isFinite(stock)) throw new Error('Katalogā ir nederīgs noliktavas atlikums.');
+      return stock;
+    }
+
+    async function calculateCatalogVersion(items) {
+      const values = items instanceof Map ? [...items.values()] : Array.from(items || []);
+      const canonical = values.map(item => {
+        const price = Number(item.cena ?? item.cenaEur ?? 0);
+        if (!Number.isFinite(price)) throw new Error(`Katalogā ir nederīga cena (${item.ean || 'bez EAN'}).`);
+        return [
+          String(item.ean || ''),
+          String(item.nosaukums || ''),
+          price.toFixed(2),
+          normalizeCatalogStock(item.atlikums)
+        ];
+      }).sort((left, right) => left[0] < right[0] ? -1 : (left[0] > right[0] ? 1 : 0));
+
+      const bytes = new TextEncoder().encode(JSON.stringify(canonical));
+      const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+      return `sha256-v1-${Array.from(digest, byte => byte.toString(16).padStart(2, '0')).join('')}`;
+    }
+
+    async function getActiveCatalogSyncMetadata() {
+      const db = await openDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('catalogMeta', 'readonly');
+        const request = tx.objectStore('catalogMeta').get('active');
+        let metadata = null;
+        request.onsuccess = () => { metadata = request.result || null; };
+        request.onerror = () => reject(request.error || new Error('Neizdevās nolasīt kataloga versiju.'));
+        tx.oncomplete = () => resolve(metadata);
+        tx.onerror = () => reject(tx.error || new Error('Neizdevās nolasīt kataloga versiju.'));
+        tx.onabort = () => reject(tx.error || new Error('Kataloga versijas nolasīšana tika pārtraukta.'));
+      }).finally(() => db.close());
+    }
+
+    async function deleteCatalogTransferChunks(transferId) {
+      const db = await openDb();
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('catalogTransfers', 'readwrite');
+          const store = tx.objectStore('catalogTransfers');
+          const request = store.getAll();
+          request.onsuccess = () => {
+            request.result.forEach(chunk => {
+              if (chunk.transferId === transferId) store.delete(chunk.key);
+            });
+          };
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error || new Error('Neizdevās notīrīt nepabeigtās kataloga daļas.'));
+          tx.onabort = () => reject(tx.error || new Error('Nepabeigto kataloga daļu tīrīšana tika pārtraukta.'));
+        });
+      } finally {
+        db.close();
+      }
     }
 
     async function saveCatalogBatchToDb(items, recordSync = false) {
       const db = await openDb();
       const before = new Map(localCatalog);
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('catalog', 'readwrite');
-        const store = tx.objectStore('catalog');
-        items.forEach(it => store.put(it));
-        tx.oncomplete = () => {
-          let added = 0;
-          let changed = 0;
-          items.forEach(it => {
-            const ean = String(it.ean);
-            const previous = before.get(ean);
-            if (!previous) added++;
-            else if (previous.nosaukums !== it.nosaukums || previous.cena !== it.cena || previous.atlikums !== it.atlikums) changed++;
-            localCatalog.set(ean, it);
-          });
-          updateCatalogStatsUI();
-          if (recordSync) saveCatalogSyncSummary({ added, changed, removed: 0, receivedAt: Date.now() });
-          resolve();
-        };
-        tx.onerror = () => reject(tx.error);
-      });
+      let stats;
+      try {
+        stats = await new Promise((resolve, reject) => {
+          const stores = recordSync ? ['catalog', 'catalogMeta'] : ['catalog'];
+          const tx = db.transaction(stores, 'readwrite');
+          const store = tx.objectStore('catalog');
+          items.forEach(it => store.put(it));
+          if (recordSync) {
+            const metadataStore = tx.objectStore('catalogMeta');
+            const request = metadataStore.get('active');
+            request.onsuccess = () => {
+              if (request.result?.roomId === getRoomId()) metadataStore.delete('active');
+            };
+          }
+          tx.oncomplete = () => {
+            let added = 0;
+            let changed = 0;
+            items.forEach(it => {
+              const ean = String(it.ean);
+              const previous = before.get(ean);
+              if (!previous) added++;
+              else if (previous.nosaukums !== it.nosaukums || previous.cena !== it.cena || previous.atlikums !== it.atlikums) changed++;
+              localCatalog.set(ean, it);
+            });
+            updateCatalogStatsUI();
+            resolve({ added, changed });
+          };
+          tx.onerror = () => reject(tx.error || new Error('Neizdevās saglabāt kataloga ierakstus.'));
+          tx.onabort = () => reject(tx.error || new Error('Kataloga ierakstu saglabāšana tika pārtraukta.'));
+        });
+      } finally {
+        db.close();
+      }
+      if (recordSync) {
+        activeCatalogSyncMetadata = null;
+        saveCatalogSyncSummary({ ...stats, removed: 0, receivedAt: Date.now(), sourceModifiedAt: 0, sourceDate: '' });
+      }
     }
 
     function formatCatalogSourceDate(timestamp) {
@@ -1457,8 +1553,13 @@
         : 'datums nav norādīts';
     }
 
+    function getCatalogSyncSummaryKey(roomId = getRoomId()) {
+      return `ean_catalog_sync_summary:${roomId}`;
+    }
+
     function saveCatalogSyncSummary(summary) {
-      localStorage.setItem('ean_catalog_sync_summary', JSON.stringify(summary));
+      const roomId = summary.roomId || getRoomId();
+      localStorage.setItem(getCatalogSyncSummaryKey(roomId), JSON.stringify({ ...summary, roomId }));
       updateCatalogStatsUI();
     }
 
@@ -1468,12 +1569,13 @@
       const status = document.getElementById('catalogSyncStatus');
       if (!status) return;
       try {
-        const summary = JSON.parse(localStorage.getItem('ean_catalog_sync_summary') || 'null');
+        const summary = JSON.parse(localStorage.getItem(getCatalogSyncSummaryKey()) || 'null');
         if (summary && Number.isFinite(summary.receivedAt)) {
           const sourceDate = summary.sourceDate || (summary.sourceModifiedAt
             ? formatCatalogSourceDate(summary.sourceModifiedAt)
             : new Date(summary.receivedAt).toLocaleString('lv-LV', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
-          status.innerText = `1C faila datums: ${sourceDate} · +${summary.added} jaunas · ${summary.changed} mainītas · −${summary.removed} noņemtas`;
+          const removedText = summary.removed > 0 ? ` · −${summary.removed} noņemtas` : '';
+          status.innerText = `1C faila datums: ${sourceDate} · +${summary.added} jaunas · ${summary.changed} mainītas${removedText}`;
           status.className = 'text-[11px] sm:text-xs text-slate-400 leading-snug break-words';
         } else {
           status.innerText = localCatalog.size ? 'Bāzes saņemšanas laiks nav zināms' : 'Bāze vēl nav saņemta';
@@ -1486,11 +1588,23 @@
       }
     }
 
+    function getCatalogSyncAdvertisement(roomId = getRoomId()) {
+      const metadata = activeCatalogSyncMetadata;
+      const hasCurrentRoomCatalog = localCatalog.size > 0 && metadata?.roomId === roomId;
+      return {
+        catalogGz: typeof DecompressionStream !== 'undefined',
+        catalogProtocolVersion: 2,
+        catalogVersion: hasCurrentRoomCatalog ? metadata.catalogVersion : '',
+        catalogModifiedAt: hasCurrentRoomCatalog ? metadata.sourceModifiedAt : 0,
+        catalogSourceDate: hasCurrentRoomCatalog ? metadata.sourceDate : ''
+      };
+    }
+
     function showCatalogSyncNotice(summary, itemCount) {
       const overlay = document.getElementById('toastScanOverlay');
       if (!overlay) return;
       document.getElementById('toastScanTitle').innerText = 'Preču bāze atjaunota';
-      document.getElementById('toastScanSub').innerText = `${itemCount} preces · +${summary.added} jaunas · ${summary.changed} mainītas · −${summary.removed} noņemtas`;
+      document.getElementById('toastScanSub').innerText = `${itemCount} preces · +${summary.added} jaunas · ${summary.changed} mainītas`;
       document.getElementById('toastScanQty').classList.add('hidden');
       overlay.classList.remove('hidden');
       clearTimeout(window._toastTimeout);
@@ -1511,13 +1625,6 @@
       }));
     }
 
-    function getLocalCatalogModifiedAt() {
-      try {
-        const summary = JSON.parse(localStorage.getItem('ean_catalog_sync_summary') || 'null');
-        return localCatalog.size && summary && Number.isFinite(summary.sourceModifiedAt) ? summary.sourceModifiedAt : 0;
-      } catch (e) { return 0; }
-    }
-
     async function gunzipBase64ToJson(base64) {
       const binary = atob(base64);
       const bytes = new Uint8Array(binary.length);
@@ -1532,108 +1639,235 @@
         payload.items = await gunzipBase64ToJson(payload.gz);
         delete payload.gz;
       }
+      const transferType = payload.transferType || 'full';
+      const roomId = payload.roomId || getRoomId();
       const { transferId, chunkIndex, totalChunks, items, sourceModifiedAt, sourceDate } = payload;
+      const isMetadataUpdate = transferType === 'metadata';
+      const validVersion = value => typeof value === 'string' && /^sha256-v1-[a-f0-9]{64}$/.test(value);
       if (
         typeof transferId !== 'string' || !/^catalog-[a-zA-Z0-9_-]{1,120}$/.test(transferId) ||
+        !['full', 'delta', 'metadata'].includes(transferType) ||
         !Number.isInteger(chunkIndex) || !Number.isInteger(totalChunks) ||
         !Number.isInteger(payload.attempt) || payload.attempt < 0 ||
-        !Number.isInteger(payload.totalItems) || payload.totalItems < 1 ||
+        !Number.isInteger(payload.totalItems) || payload.totalItems < (isMetadataUpdate ? 0 : 1) ||
         !Number.isFinite(sourceModifiedAt) || sourceModifiedAt <= 0 ||
         typeof sourceDate !== 'string' ||
         totalChunks < 1 || totalChunks > 10000 || chunkIndex < 0 || chunkIndex >= totalChunks ||
-        !Array.isArray(items) || items.length < 1 || items.length > 1000 ||
+        !Array.isArray(items) || items.length > 1000 ||
+        (isMetadataUpdate && (payload.totalChunks !== 1 || payload.totalItems !== 0 || items.length !== 0)) ||
+        (transferType === 'delta' && (!validVersion(payload.catalogVersion) || !validVersion(payload.baseCatalogVersion))) ||
+        (isMetadataUpdate && (!validVersion(payload.catalogVersion) || !validVersion(payload.baseCatalogVersion))) ||
+        (payload.catalogVersion && !validVersion(payload.catalogVersion)) ||
         items.some(item => !item || typeof item.ean !== 'string' || !item.ean.trim() || typeof item.nosaukums !== 'string' || !item.nosaukums.trim())
       ) {
         throw new Error('Saņemta nederīga preču bāzes pārraides daļa.');
       }
 
+      if (roomId !== getRoomId()) throw new Error('Saņemtais katalogs pieder citam veikalam.');
+      if (payload.catalogVersion) {
+        const appliedMetadata = await getActiveCatalogSyncMetadata();
+        if (
+          appliedMetadata?.roomId === roomId &&
+          appliedMetadata.lastTransferId === transferId &&
+          appliedMetadata.catalogVersion === payload.catalogVersion
+        ) return true;
+      }
+
       const db = await openDb();
-      let completedCatalog = null;
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(['catalog', 'catalogTransfers'], 'readwrite');
-        const catalogStore = tx.objectStore('catalog');
-        const transfersStore = tx.objectStore('catalogTransfers');
-        transfersStore.put({ key: `${transferId}:${chunkIndex}`, transferId, chunkIndex, totalChunks, totalItems: payload.totalItems, items, sourceModifiedAt, sourceDate, receivedAt: Date.now() });
-        if (chunkIndex === 0 && payload.attempt === 0) {
-          const expiredBefore = Date.now() - 24 * 60 * 60 * 1000;
-          const cleanupRequest = transfersStore.getAll();
-          cleanupRequest.onsuccess = () => {
-            cleanupRequest.result.forEach(chunk => {
-              if (chunk.receivedAt < expiredBefore) transfersStore.delete(chunk.key);
-            });
-          };
-        }
-        const transfersIndex = transfersStore.index('transferId');
-        const countRequest = transfersIndex.count(transferId);
-        countRequest.onsuccess = () => {
-          const receivedCount = countRequest.result;
-          const progress = document.getElementById('catalogSyncStatus');
-          if (progress && receivedCount < totalChunks) {
-            progress.innerText = `Saņem bāzi: ${receivedCount} no ${totalChunks} daļām`;
-            progress.className = 'text-[11px] sm:text-xs text-sky-300 leading-snug break-words';
+      let chunks = [];
+      let isComplete = false;
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('catalogTransfers', 'readwrite');
+          const transfersStore = tx.objectStore('catalogTransfers');
+          transfersStore.put({
+            key: `${transferId}:${chunkIndex}`,
+            transferId,
+            chunkIndex,
+            totalChunks,
+            totalItems: payload.totalItems,
+            transferType,
+            roomId,
+            baseCatalogVersion: payload.baseCatalogVersion || '',
+            catalogVersion: payload.catalogVersion || '',
+            items,
+            sourceModifiedAt,
+            sourceDate,
+            receivedAt: Date.now()
+          });
+          if (chunkIndex === 0 && payload.attempt === 0) {
+            const expiredBefore = Date.now() - 24 * 60 * 60 * 1000;
+            const cleanupRequest = transfersStore.getAll();
+            cleanupRequest.onsuccess = () => {
+              cleanupRequest.result.forEach(chunk => {
+                if (chunk.receivedAt < expiredBefore) transfersStore.delete(chunk.key);
+              });
+            };
           }
-          if (receivedCount < totalChunks) return;
-
-          const request = transfersIndex.getAll(transferId);
-          request.onsuccess = () => {
-            const chunks = request.result || [];
-            const uniqueChunks = new Map(chunks.map(chunk => [chunk.chunkIndex, chunk]));
-            if (
-              uniqueChunks.size !== totalChunks ||
-              Array.from(uniqueChunks.values()).some(chunk =>
-                chunk.totalChunks !== totalChunks ||
-                chunk.totalItems !== payload.totalItems ||
-                chunk.sourceModifiedAt !== sourceModifiedAt ||
-                chunk.sourceDate !== sourceDate
-              )
-            ) return;
-
-            const nextCatalog = new Map();
-            for (let index = 0; index < totalChunks; index++) {
-              const chunk = uniqueChunks.get(index);
-              if (!chunk) return;
-              for (const item of chunk.items) {
-                if (!item || typeof item.ean !== 'string' || !item.ean.trim() || typeof item.nosaukums !== 'string' || !item.nosaukums.trim() || nextCatalog.has(item.ean)) {
-                  tx.abort();
-                  return;
-                }
-                nextCatalog.set(item.ean, item);
-              }
+          const transfersIndex = transfersStore.index('transferId');
+          const countRequest = transfersIndex.count(transferId);
+          countRequest.onsuccess = () => {
+            const receivedCount = countRequest.result;
+            const progress = document.getElementById('catalogSyncStatus');
+            if (progress && receivedCount < totalChunks) {
+              progress.innerText = `Saņem bāzi: ${receivedCount} no ${totalChunks} daļām`;
+              progress.className = 'text-[11px] sm:text-xs text-sky-300 leading-snug break-words';
             }
-            if (!nextCatalog.size || nextCatalog.size !== payload.totalItems) {
-              tx.abort();
+            if (receivedCount < totalChunks) return;
+            const request = transfersIndex.getAll(transferId);
+            request.onsuccess = () => {
+              const savedChunks = request.result || [];
+              const uniqueChunks = new Map(savedChunks.map(chunk => [chunk.chunkIndex, chunk]));
+              if (
+                uniqueChunks.size !== totalChunks ||
+                Array.from(uniqueChunks.values()).some(chunk =>
+                  chunk.totalChunks !== totalChunks ||
+                  chunk.totalItems !== payload.totalItems ||
+                  chunk.transferType !== transferType ||
+                  chunk.roomId !== roomId ||
+                  chunk.baseCatalogVersion !== (payload.baseCatalogVersion || '') ||
+                  chunk.catalogVersion !== (payload.catalogVersion || '') ||
+                  chunk.sourceModifiedAt !== sourceModifiedAt ||
+                  chunk.sourceDate !== sourceDate
+                )
+              ) return;
+              chunks = Array.from({ length: totalChunks }, (_, index) => uniqueChunks.get(index));
+              if (chunks.some(chunk => !chunk)) return;
+              const receivedItems = chunks.flatMap(chunk => chunk.items);
+              const receivedEans = new Set();
+              if (
+                receivedItems.length !== payload.totalItems ||
+                receivedItems.some(item => {
+                  if (!item || typeof item.ean !== 'string' || !item.ean.trim() ||
+                      typeof item.nosaukums !== 'string' || !item.nosaukums.trim() ||
+                      receivedEans.has(item.ean)) return true;
+                  receivedEans.add(item.ean);
+                  return false;
+                })
+              ) return;
+              isComplete = true;
+            };
+          };
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error || new Error('Neizdevās saglabāt saņemtās kataloga daļas.'));
+          tx.onabort = () => reject(tx.error || new Error('Kataloga daļu saglabāšana tika pārtraukta.'));
+        });
+      } finally {
+        db.close();
+      }
+      if (!isComplete) return false;
+
+      const incomingItems = chunks.flatMap(chunk => chunk.items);
+      const currentDb = await openDb();
+      let currentItems = [];
+      let currentMetadata = null;
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = currentDb.transaction(['catalog', 'catalogMeta'], 'readonly');
+          const itemsRequest = tx.objectStore('catalog').getAll();
+          const metadataRequest = tx.objectStore('catalogMeta').get('active');
+          itemsRequest.onsuccess = () => { currentItems = itemsRequest.result || []; };
+          metadataRequest.onsuccess = () => { currentMetadata = metadataRequest.result || null; };
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error || new Error('Neizdevās nolasīt tālruņa katalogu.'));
+          tx.onabort = () => reject(tx.error || new Error('Tālruņa kataloga nolasīšana tika pārtraukta.'));
+        });
+      } finally {
+        currentDb.close();
+      }
+
+      const currentRoomItems = currentMetadata?.roomId === roomId ? currentItems : [];
+      const currentRoomCatalog = new Map(currentRoomItems.map(item => [String(item.ean), item]));
+      const nextCatalog = new Map(transferType === 'full' ? [] : currentRoomCatalog);
+      const currentVersion = currentMetadata?.roomId === roomId ? currentMetadata.catalogVersion : '';
+      if ((transferType === 'delta' || isMetadataUpdate) && currentVersion !== payload.baseCatalogVersion) {
+        await deleteCatalogTransferChunks(transferId);
+        const mismatch = new Error('Telefona kataloga sākuma versija nesakrīt; nepieciešama pilna sinhronizācija.');
+        mismatch.code = 'catalog_base_version_mismatch';
+        throw mismatch;
+      }
+      if (transferType === 'delta' || transferType === 'full') {
+        incomingItems.forEach(item => nextCatalog.set(String(item.ean), item));
+      }
+      const computedVersion = isMetadataUpdate
+        ? currentVersion
+        : await calculateCatalogVersion(transferType === 'delta' ? nextCatalog : incomingItems);
+      const catalogVersion = payload.catalogVersion || computedVersion;
+      if (catalogVersion !== computedVersion) {
+        await deleteCatalogTransferChunks(transferId);
+        const versionError = new Error('Saņemtās bāzes satura versija nesakrīt ar pārraides versiju.');
+        if (transferType === 'delta') versionError.code = 'catalog_base_version_mismatch';
+        throw versionError;
+      }
+
+      const summary = { added: 0, changed: 0, removed: 0, receivedAt: Date.now(), sourceModifiedAt, sourceDate, roomId };
+      incomingItems.forEach(item => {
+        const previous = currentRoomCatalog.get(String(item.ean));
+        if (!previous) summary.added++;
+        else if (previous.nosaukums !== item.nosaukums || previous.cena !== item.cena || previous.atlikums !== item.atlikums) summary.changed++;
+      });
+
+      const writeDb = await openDb();
+      let baseMismatch = false;
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = writeDb.transaction(['catalog', 'catalogTransfers', 'catalogMeta'], 'readwrite');
+          const catalogStore = tx.objectStore('catalog');
+          const transfersStore = tx.objectStore('catalogTransfers');
+          const metadataStore = tx.objectStore('catalogMeta');
+          const activeMetadataRequest = metadataStore.get('active');
+          activeMetadataRequest.onsuccess = () => {
+            const active = activeMetadataRequest.result || null;
+            const activeVersion = active?.roomId === roomId ? active.catalogVersion : '';
+            if ((transferType === 'delta' || isMetadataUpdate) && activeVersion !== payload.baseCatalogVersion) {
+              baseMismatch = true;
+              chunks.forEach(chunk => transfersStore.delete(chunk.key));
               return;
             }
-
-            catalogStore.clear();
-            nextCatalog.forEach(item => catalogStore.put(item));
+            if (transferType === 'full') catalogStore.clear();
+            if (transferType === 'full' || transferType === 'delta') {
+              incomingItems.forEach(item => catalogStore.put(item));
+            }
+            metadataStore.put({
+              roomId,
+              catalogVersion,
+              lastTransferId: transferId,
+              sourceModifiedAt,
+              sourceDate,
+              receivedAt: Date.now()
+            }, 'active');
             chunks.forEach(chunk => transfersStore.delete(chunk.key));
-            completedCatalog = nextCatalog;
           };
-        };
-        tx.oncomplete = () => {
-          if (!completedCatalog) {
-            resolve(false);
-            return;
-          }
-          const summary = { added: 0, changed: 0, removed: 0, receivedAt: Date.now(), sourceModifiedAt, sourceDate };
-          completedCatalog.forEach((item, ean) => {
-            const previous = localCatalog.get(ean);
-            if (!previous) summary.added++;
-            else if (previous.nosaukums !== item.nosaukums || previous.cena !== item.cena || previous.atlikums !== item.atlikums) summary.changed++;
-          });
-          localCatalog.forEach((_, ean) => {
-            if (!completedCatalog.has(ean)) summary.removed++;
-          });
-          localCatalog.clear();
-          completedCatalog.forEach((item, ean) => localCatalog.set(ean, item));
-          saveCatalogSyncSummary(summary);
-          showCatalogSyncNotice(summary, completedCatalog.size);
-          resolve(true);
-        };
-        tx.onerror = () => reject(tx.error || new Error('Neizdevās saglabāt saņemto preču bāzi.'));
-        tx.onabort = () => reject(tx.error || new Error('Preču bāzes pārraide tika atcelta; iepriekšējā bāze saglabāta.'));
-      });
+          tx.oncomplete = () => {
+            if (baseMismatch) {
+              const mismatch = new Error('Telefona pa to laiku pienāca cita kataloga versija; nepieciešama pilna sinhronizācija.');
+              mismatch.code = 'catalog_base_version_mismatch';
+              reject(mismatch);
+            } else resolve();
+          };
+          tx.onerror = () => reject(tx.error || new Error('Neizdevās piemērot saņemto katalogu.'));
+          tx.onabort = () => reject(tx.error || new Error('Kataloga atjauninājums tika atcelts; iepriekšējais katalogs saglabāts.'));
+        });
+      } finally {
+        writeDb.close();
+      }
+
+      if (transferType === 'full') localCatalog.clear();
+      if (transferType === 'full' || transferType === 'delta') {
+        incomingItems.forEach(item => localCatalog.set(String(item.ean), item));
+      }
+      activeCatalogSyncMetadata = {
+        roomId,
+        catalogVersion,
+        lastTransferId: transferId,
+        sourceModifiedAt,
+        sourceDate,
+        receivedAt: Date.now()
+      };
+      updateCatalogStatsUI();
+      saveCatalogSyncSummary(summary);
+      if (!isMetadataUpdate) showCatalogSyncNotice(summary, localCatalog.size);
+      return true;
     }
 
     async function clearLocalScansHistory() {
@@ -2007,6 +2241,7 @@
           mqttClient.publish(`ean2026/${roomId}/ping`, JSON.stringify({
             deviceId,
             workerName: getWorkerName(),
+            ...getCatalogSyncAdvertisement(roomId),
             approved: isDeviceApproved,
             broker: mqttConnectedNames().join('+'),
             battery: batt ? batt.level : null,
@@ -2070,26 +2305,30 @@
               return;
             }
 
-            if (topic.endsWith('/catalog') && (Array.isArray(payload.items) || typeof payload.gz === 'string')) {
+            if (topic.endsWith('/catalog') &&
+                (Array.isArray(payload.items) || typeof payload.gz === 'string') &&
+                payload.transferType !== 'metadata') {
               if (payload.transferId) {
                 try {
                   await receiveCatalogTransferChunk(payload);
                   sendCatalogChunkAck(payload);
                 } catch (error) {
                   console.error('Neizdevās saņemt preču bāzes daļu:', error);
-                  sendCatalogChunkAck(payload, 'error', error.message || 'Neizdevās saglabāt daļu.');
+                  sendCatalogChunkAck(payload, error.code === 'catalog_base_version_mismatch' ? 'base_mismatch' : 'error', error.message || 'Neizdevās saglabāt daļu.');
                 }
               }
               else await saveCatalogBatchToDb(payload.items, true);
               return;
             }
-            if (topic === `ean2026/${roomId}/catalog/${deviceId}` && (Array.isArray(payload.items) || typeof payload.gz === 'string')) {
+            if (topic === `ean2026/${roomId}/catalog/${deviceId}` &&
+                (Array.isArray(payload.items) || typeof payload.gz === 'string') &&
+                (payload.transferType === 'metadata' || payload.transferId)) {
               try {
                 await receiveCatalogTransferChunk(payload);
                 sendCatalogChunkAck(payload);
               } catch (error) {
                 console.error('Neizdevās saņemt preču bāzes daļu:', error);
-                sendCatalogChunkAck(payload, 'error', error.message || 'Neizdevās saglabāt daļu.');
+                sendCatalogChunkAck(payload, error.code === 'catalog_base_version_mismatch' ? 'base_mismatch' : 'error', error.message || 'Neizdevās saglabāt daļu.');
               }
               return;
             }
@@ -3432,13 +3671,28 @@
     async function clearCatalogData() {
       if (!confirm("Vai tiešām dzēst preču bāzi?")) return;
       const db = await openDb();
-      const tx = db.transaction('catalog', 'readwrite');
-      tx.objectStore('catalog').clear();
-      tx.oncomplete = () => {
+      const roomId = getRoomId();
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(['catalog', 'catalogMeta', 'catalogTransfers'], 'readwrite');
+          tx.objectStore('catalog').clear();
+          tx.objectStore('catalogMeta').clear();
+          tx.objectStore('catalogTransfers').clear();
+          tx.oncomplete = resolve;
+          tx.onerror = () => reject(tx.error || new Error('Preču bāzes dzēšana neizdevās.'));
+          tx.onabort = () => reject(tx.error || new Error('Preču bāzes dzēšana tika pārtraukta.'));
+        });
         localCatalog.clear();
+        activeCatalogSyncMetadata = null;
+        localStorage.removeItem(getCatalogSyncSummaryKey(roomId));
         updateCatalogStatsUI();
         alert("Bāze notīrīta.");
-      };
+      } catch (error) {
+        console.error('Neizdevās notīrīt preču bāzi:', error);
+        alert(`Preču bāzi neizdevās notīrīt: ${error.message}`);
+      } finally {
+        db.close();
+      }
     }
 
     document.addEventListener('pointerdown', resetActivityTimer);
@@ -3507,7 +3761,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.40';
+    const APP_UPDATE_VERSION = '2.41';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;

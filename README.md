@@ -22,6 +22,10 @@ EAN Skeneris ir mobilā svītrkodu skenera tīmekļa lietotne (PWA). Tā darboja
 
 QR kodā ir veikala ID un attēlojamais nosaukums. Šī informācija nav šifrēta un nav piekļuves parole.
 
+## Preču bāzes sinhronizācija
+
+APP saglabā kataloga satura versiju katram veikalam. Pēc sinhronizācijas tā ziņo šo versiju Admin panelim; ja kataloga saturs nav mainījies, produkti atkārtoti netiek lejupielādēti. Atjauninot bāzi, APP saņem tikai jaunās/mainītās preces, ja tās lokālā bāze sakrīt ar Admin norādīto sākuma versiju. Ja versija nav zināma vai nesakrīt, Admin var drošībai nosūtīt pilnu katalogu. Kataloga atjauninājums neaiztiek telefona skenējumu vēsturi vai gaidošo sinhronizācijas rindu.
+
 ## Lokāla palaišana
 
 Nepieciešams Python 3. Projekta tīmekļa daļai nav vajadzīgs kompilācijas solis vai `npm install`.

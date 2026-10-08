@@ -22,7 +22,7 @@
 ## 2.1. Darbvieta
 - Abi repozitoriji atveras kopā ar `D:\Projekti\EAN Studio\EAN Studio.code-workspace` (`ean-cam` — publiskais PWA, `ean-cam-admin` — privātais panelis). Katram ir sava Git vēsture.
 - Skenera (`index.html`) un admin protokola izmaiņas jāskata kopā: MQTT tēmas un ziņu formāti ir kopīgs līgums (`auth_req`, `auth/<deviceId>`, `catalog/<deviceId>`, `catalog_ack`, `price_update`).
-- Kataloga pārraide: admin sagatavo daļas (gzip+base64 laukā `gz`, vai nesaspiests `items`), tālrunis apstiprina katru daļu ar `catalog_ack`. Skeneris autorizācijas pieprasījumā norāda `catalogGz` un `catalogModifiedAt`.
+- Kataloga sinhronizācija: stabilā kataloga versija `sha256-v1-<hex>` balstās uz sakārtotiem EAN/nosaukuma/cenas/atlikuma ierakstiem. APP `auth_req` un `ping` ziņo `catalogProtocolVersion`, `catalogVersion`, `catalogModifiedAt`, `catalogSourceDate` un `catalogGz`. Admin nemainītam saturam izlaiž produktu daļas; ja ierīces bāzes versija sakrīt, sūta tikai upsert delta, citādi — pilnu gzip+base64 (`gz`) vai nesaspiestu (`items`) bāzi. Tālrunis daļas apstiprina ar `catalog_ack`, piemēro pārraidi atomiski un bāzes versijas neatbilstībā pieprasa pilnu fallback. Delta nekad nedzēš EAN un neaizskar skenējumu vēsturi/outbox. Vecākām APP versijām paliek pilnas bāzes formāts.
 - Skenējuma ACK `ok` nozīmē pieņemtu vai idempotenti atkārtoti saņemtu operāciju; `duplicate_label` nozīmē, ka admin noraidīja cita skenējuma ID cenu zīmes EAN dublikātu. Tikai `ok` drīkst atzīmēt skenējumu kā sinhronizētu.
 - Izlaišanas secība, ja mainās protokols: vispirms publicē skeneri (`ean-cam`), tad lieto jauno admin versiju.
 
