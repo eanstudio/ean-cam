@@ -2,6 +2,13 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.43] — 2026-10-12
+
+### Mainīts
+
+- Skeneris izmanto pārlūka `BarcodeDetector`, ja pieejami visi vajadzīgie svītrkodu formāti; citādi automātiski izmanto `html5-qrcode`.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [Unreleased]
 
 ### Mainīts
