@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.45] — 2026-10-14
+
+### Labots
+
+- Veikala QR saites vairs netiek uztvertas kā preces; pēc derīga QR koda nolasīšanas kamera tiek apturēta un pievienots cooldown, lai novērstu tūlītēju atkārtotu nolasīšanu.
+- “Jau esi veikalā” paziņojums redzams 2,5 sekundes un pavada brīdinājuma signāls; aizverot QR režīmu, parastajai skenēšanai ir 2 sekunžu cooldown.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.44] — 2026-10-14
 
 ### Mainīts
