@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.44] — 2026-10-14
+
+### Mainīts
+
+- iPhone Safari/PWA svītrkodu skenēšanai pievienots ZXing-C++ `BarcodeDetector` polifils, 720p/30 kadru plūsma, iespējamais nepārtrauktais fokuss un 1,5× tuvinājums.
+- Paātrināts natīvās un `html5-qrcode` noteikšanas cikls; veikala QR maiņai labota iPhone kameras izvēle un skenēšanas plūsma.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.43] — 2026-10-12
 
 ### Mainīts
