@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.47] — 2026-10-27
+
+### Mainīts
+
+- Cenu zīmju režīmā pirms katalogā neatrasta EAN saglabāšanas parādīts apstiprinājums ar pilnu nolasīto kodu; atcelšana neko nesaglabā.
+- Ja preču bāze nav sinhronizēta šim veikalam, APP skaidri ziņo par bāzes nepieejamību un neveido cenu zīmi.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.46] — 2026-10-27
 
 ### Labots
