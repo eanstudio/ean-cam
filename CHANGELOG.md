@@ -2,6 +2,13 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.46] — 2026-10-27
+
+### Labots
+
+- Natīvais `BarcodeDetector` un `html5-qrcode` tagad skenē tikai redzamā kameras rāmī; natīvais detektors ņem vērā arī video attēla apgriešanu.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.45] — 2026-10-14
 
 ### Labots
