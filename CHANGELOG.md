@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.54] — 2026-10-28
+
+### Mainīts
+
+- Izslēgtai kamerai pievienota kompakta aktivizēšanas kartīte; pēc ieslēgšanas atjaunojas pilna priekšskatījuma vieta.
+- Veikala un bāzes informācija saspiesta; skenējumu rindās statusa tekstu aizstāj krāsains indikators, bet daudzums un cena rādīti kopā.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.53] — 2026-10-28
 
 ### Mainīts

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.53</title>
+  <title>EAN Skeneris Pro V2.54</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -96,6 +96,25 @@
       .scanner-laser-line, .scan-flash, .animate-pulse { animation: none !important; }
       *, *::before, *::after { scroll-behavior: auto !important; }
     }
+    #cameraBoxContainer.camera-disabled {
+      height: 4.5rem;
+      min-height: 4.5rem;
+      max-height: 4.5rem;
+      aspect-ratio: auto;
+      border-radius: 1rem;
+      background-color: rgb(15 23 42 / 0.95);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+    #cameraBoxContainer.camera-disabled > #reader,
+    #cameraBoxContainer.camera-disabled > #laserContainer,
+    #cameraBoxContainer.camera-disabled > #cameraReticle,
+    #cameraBoxContainer.camera-disabled > #storeQrScanOverlay,
+    #cameraBoxContainer.camera-disabled > #cameraSleepOverlay,
+    #cameraBoxContainer.camera-disabled > #cameraPausedOverlay,
+    #cameraBoxContainer.camera-disabled > #cameraManualOverlay,
+    #cameraBoxContainer.camera-disabled > #toastScanOverlay {
+      display: none !important;
+    }
   </style>
 </head>
 <body class="h-full flex flex-col antialiased touch-manipulation overflow-hidden bg-slate-950 text-slate-100">
@@ -104,7 +123,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.53 — Pending indikators ir tādā pašā izmērā kā pārējās ikonas; veikala “Mainīt” darbība ir centrēta un izcelta.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.54 — Izslēgtas kameras vietā kompakta kartīte; veikala un bāzes informācija saspiesta, skenējumu rindās skaidrāk redzams daudzums un cena.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -143,12 +162,10 @@
       </div>
     </div>
 
-    <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="group flex min-h-12 w-full items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1.5 text-left shadow-sm transition hover:border-indigo-300/25 hover:bg-slate-800/90 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Veikals. Pieskarieties, lai mainītu veikalu." title="Pieskarieties, lai mainītu veikalu.">
+    <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="group flex min-h-12 w-full items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1.5 text-left shadow-sm transition hover:border-indigo-300/25 hover:bg-slate-800/90 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" title="Mainīt veikalu">
       <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-400/10 text-lg text-indigo-300" aria-hidden="true">🏪</span>
       <span class="min-w-0 flex-1">
-        <span class="block text-[8px] font-bold uppercase leading-3 tracking-[0.16em] text-slate-400">Veikals</span>
-        <span id="currentRoomText" class="block break-words text-sm font-bold leading-4 text-slate-100">...</span>
-        <span class="mt-1 block text-[10px] leading-3 text-slate-400">Pieskarieties, lai mainītu veikalu</span>
+        <span id="currentRoomText" class="block truncate text-sm font-bold leading-5 text-slate-100">...</span>
       </span>
       <span class="inline-flex min-h-8 shrink-0 items-center justify-center gap-1.5 rounded-xl border border-indigo-300/25 bg-indigo-400/10 px-2.5 text-[10px] font-semibold text-indigo-100 shadow-sm transition group-hover:bg-indigo-400/15 group-active:scale-[0.98]">
         <span>Mainīt</span>
@@ -236,6 +253,14 @@
         </div>
         <span id="toastScanQty" class="px-2.5 py-1 bg-black/35 rounded-xl text-sm font-mono font-bold">+1</span>
       </div>
+
+      <button type="button" id="cameraOffPrompt" onclick="toggleCameraPower()" class="hidden absolute inset-0 z-50 flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-slate-900 px-4 text-left active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Kamera izslēgta • Pieskaries, lai ieslēgtu">
+        <svg aria-hidden="true" viewBox="0 0 24 24" class="h-5 w-5 shrink-0 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 7.5h3l1.5-2h7l1.5 2h3A1.5 1.5 0 0 1 21.5 9v9A1.5 1.5 0 0 1 20 19.5H4A1.5 1.5 0 0 1 2.5 18V9A1.5 1.5 0 0 1 4 7.5Z"></path>
+          <circle cx="12" cy="13" r="3.5"></circle>
+        </svg>
+        <span class="min-w-0 text-xs font-semibold leading-4 text-slate-200">Kamera izslēgta <span class="px-1 text-slate-500" aria-hidden="true">•</span> Pieskaries, lai ieslēgtu</span>
+      </button>
     </div>
 
     <!-- Pamatpogas un režīma slēdži -->
@@ -254,11 +279,10 @@
       </button>
     </div>
 
-    <div id="catalogStatusCard" class="flex justify-between items-center gap-2 px-3 py-2 bg-slate-900/80 border border-white/10 rounded-xl text-xs font-mono text-slate-400 shrink-0">
-      <div class="flex min-w-0 flex-col gap-0.5">
-        <span id="catalogStatsText" class="font-semibold text-slate-200">Bāze: 0 preces</span>
-        <span id="catalogSyncStatus" class="text-[11px] sm:text-xs text-slate-400 leading-snug break-words" role="status" aria-live="polite">Saņemšanas statuss nav zināms</span>
-      </div>
+    <div id="catalogStatusCard" class="flex min-w-0 shrink-0 items-center gap-1 px-1 py-0.5 text-[10px] font-mono leading-4 text-slate-400">
+      <span id="catalogStatsText" class="shrink-0 whitespace-nowrap text-slate-400">Bāze: 0 preces</span>
+      <span class="shrink-0 text-slate-600" aria-hidden="true">•</span>
+      <span id="catalogSyncStatus" class="min-w-0 flex-1 truncate text-[10px] sm:text-[11px] text-slate-400 leading-4" role="status" aria-live="polite">Saņemšanas statuss nav zināms</span>
     </div>
 
     <!-- Saraksts -->
@@ -1626,6 +1650,7 @@
       if (el) el.innerText = `Bāze: ${localCatalog.size} preces`;
       const status = document.getElementById('catalogSyncStatus');
       if (!status) return;
+      const compactStatusClass = 'min-w-0 flex-1 truncate text-[10px] sm:text-[11px] leading-4';
       try {
         const summary = JSON.parse(localStorage.getItem(getCatalogSyncSummaryKey()) || 'null');
         if (summary && Number.isFinite(summary.receivedAt)) {
@@ -1634,16 +1659,17 @@
             : new Date(summary.receivedAt).toLocaleString('lv-LV', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
           const removedText = summary.removed > 0 ? ` · −${summary.removed} noņemtas` : '';
           status.innerText = `1C faila datums: ${sourceDate} · +${summary.added} jaunas · ${summary.changed} mainītas${removedText}`;
-          status.className = 'text-[11px] sm:text-xs text-slate-400 leading-snug break-words';
+          status.className = `${compactStatusClass} text-slate-400`;
         } else {
           status.innerText = localCatalog.size ? 'Bāzes saņemšanas laiks nav zināms' : 'Bāze vēl nav saņemta';
-          status.className = 'text-[11px] sm:text-xs text-slate-400 leading-snug break-words';
+          status.className = `${compactStatusClass} text-slate-400`;
         }
       } catch (error) {
         console.error('Neizdevās nolasīt bāzes saņemšanas kopsavilkumu:', error);
         status.innerText = 'Neizdevās nolasīt bāzes atjauninājuma statusu';
-        status.className = 'text-[11px] sm:text-xs text-red-300 leading-snug break-words';
+        status.className = `${compactStatusClass} text-red-300`;
       }
+      status.title = status.innerText;
     }
 
     function hasCurrentCatalogForRoom(roomId = getRoomId()) {
@@ -2940,7 +2966,9 @@
     function updateCameraControlUI() {
       const button = document.getElementById('cameraPowerBtn');
       const overlay = document.getElementById('cameraManualOverlay');
-      if (!button || !overlay) return;
+      const cameraBox = document.getElementById('cameraBoxContainer');
+      const offPrompt = document.getElementById('cameraOffPrompt');
+      if (!button || !overlay || !cameraBox || !offPrompt) return;
       const enabled = !isCameraManuallyDisabled;
       const actionLabel = enabled ? 'Izslēgt kameru' : 'Ieslēgt kameru';
       button.setAttribute('aria-label', actionLabel);
@@ -2950,6 +2978,8 @@
         ? 'w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/25 text-emerald-300 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400'
         : 'w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-400 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400';
       overlay.classList.toggle('hidden', enabled);
+      cameraBox.classList.toggle('camera-disabled', !enabled);
+      offPrompt.classList.toggle('hidden', enabled);
     }
 
     function pauseCamera() {
@@ -3808,23 +3838,28 @@
         row.onclick = () => openEditModal(it.id);
 
         const timeStr = new Date(it.timestamp).toLocaleTimeString('lv-LV', { hour: '2-digit', minute: '2-digit' });
+        const statusDescription = it.synced ? 'Nosūtīts' : 'Gaida nosūtīšanu';
         const syncStatus = it.synced
-          ? `<span class="inline-flex items-center gap-1 text-[10px] text-emerald-300 shrink-0" aria-label="Nosūtīts"><span class="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true"></span>Nosūtīts</span>`
-          : `<span class="inline-flex items-center gap-1 text-[10px] text-amber-300 shrink-0" aria-label="Gaida nosūtīšanu"><span class="w-2 h-2 rounded-full bg-amber-400" aria-hidden="true"></span>Gaida</span>`;
-
-        let badgeHtml = it.mode === 'repricing' 
-          ? `<span class="px-2.5 py-1 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs sm:text-sm">${it.price || '0.00'} €</span>`
-          : `<span class="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-mono font-bold text-xs sm:text-sm">${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}</span>`;
+          ? `<span class="h-2 w-2 shrink-0 rounded-full bg-emerald-500" role="img" aria-label="${statusDescription}" title="${statusDescription}"></span>`
+          : `<span class="h-2 w-2 shrink-0 rounded-full bg-amber-400" role="img" aria-label="${statusDescription}" title="${statusDescription}"></span>`;
+        const quantityText = `${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}`;
+        const priceText = `${it.price || '0.00'} €`;
+        const priceColor = it.mode === 'repricing' ? 'text-amber-300' : 'text-emerald-300';
 
         row.setAttribute('role', 'button');
         row.tabIndex = 0;
-        row.setAttribute('aria-label', `${it.name}, ${it.qty} ${Number.isInteger(it.qty) ? 'gab.' : 'kg'}. Pieskaries, lai labotu.`);
+        row.setAttribute('aria-label', `${it.name}, ${quantityText}, ${priceText}. ${statusDescription}. Pieskaries, lai labotu.`);
         row.innerHTML = `
-          <div class="truncate flex-1">
-            <div class="flex items-center gap-1.5">${syncStatus}<p class="text-xs sm:text-sm font-semibold text-white truncate">${it.name}</p></div>
-            <p class="text-xs font-mono text-slate-400 mt-0.5">${it.ean} • ${it.price || '0.00'} € • ${timeStr}</p>
+          <div class="min-w-0 flex-1">
+            <div class="flex min-w-0 items-center gap-1.5">
+              <p class="min-w-0 flex-1 truncate text-sm leading-5 font-semibold text-white">${it.name}</p>
+              ${syncStatus}
+            </div>
+            <div class="mt-0.5 flex min-w-0 items-center justify-between gap-2">
+              <p class="min-w-0 truncate text-[10px] sm:text-xs font-mono leading-4 text-slate-400">${it.ean} • ${timeStr}</p>
+              <span class="shrink-0 whitespace-nowrap text-[10px] sm:text-xs font-mono font-semibold text-slate-300">${quantityText} <span class="text-slate-500">•</span> <span class="${priceColor}">${priceText}</span></span>
+            </div>
           </div>
-          <div class="text-right shrink-0">${badgeHtml}</div>
         `;
         row.onkeydown = event => {
           if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -4202,7 +4237,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.53';
+    const APP_UPDATE_VERSION = '2.54';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;
