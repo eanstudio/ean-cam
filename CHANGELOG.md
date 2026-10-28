@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.53] — 2026-10-28
+
+### Mainīts
+
+- Gaidošo sinhronizācijas darbību indikators pielāgots pārējo galvenes ikonu izmēram.
+- Veikala kartītes darbība “Mainīt” novietota vertikāli centrā un vizuāli izcelta.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.52] — 2026-10-28
 
 ### Mainīts
