@@ -2,6 +2,13 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.50] — 2026-10-28
+
+### Mainīts
+
+- Galvenes darbību ikonas izvietotas atsevišķā 44 px joslā; darbinieka/savienojuma statuss un veikala nosaukums atrodas zem tās, lai tekstu neaizsegtu pogas.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.49] — 2026-10-28
 
 ### Labots
