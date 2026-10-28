@@ -2,6 +2,13 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.48] — 2026-10-28
+
+### Mainīts
+
+- Gaidošo sinhronizācijas darbību indikators galvenē noformēts kā pārējās ikonas; smilšu pulkstenis un skaits vairs nepārklājas, bet skaits virs 99 tiek rādīts kā `99+`.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.47] — 2026-10-27
 
 ### Mainīts
