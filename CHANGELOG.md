@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.51] — 2026-10-28
+
+### Mainīts
+
+- Galvene pārveidota kompaktā premium izkārtojumā: darbinieka statuss, sinhronizācijas skaits un kameras/zibspuldzes pogas ir augšējā joslā, bet veikala nosaukums — atsevišķā pilna platuma, tekstu nepārklājošā joslā.
+- Kameras objektīva maiņa un iestatījumi pārvietoti uz pieejamu papildu darbību izvēlni; tā aizveras ar Escape vai ārpusklikšķi un korekti atjauno fokusu.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.50] — 2026-10-28
 
 ### Mainīts
