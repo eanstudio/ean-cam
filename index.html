@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.51</title>
+  <title>EAN Skeneris Pro V2.52</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -84,9 +84,6 @@
     #appUpdatePrompt {
       padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
-    #headerMoreMenu > summary { list-style: none; }
-    #headerMoreMenu > summary::-webkit-details-marker { display: none; }
-
     @media (orientation: landscape) and (max-height: 600px) {
       #cameraBoxContainer { aspect-ratio: 16 / 6; max-height: 38dvh; }
     }
@@ -107,7 +104,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.51 — Kompakta premium galvene ar pilna platuma veikala joslu un papildu darbībām izvēlnē.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.52 — Visas galvenes ikonas redzamas; veikala maiņas poga paskaidro, kur pieskarties.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -116,60 +113,53 @@
     </div>
   </aside>
 
-  <!-- Kompakta galvene: darbinieks un vadības ikonas virs pilna veikala nosaukuma -->
+  <!-- Galvene: darbinieks un visas vadības ikonas virs veikala maiņas kartītes -->
   <header class="shrink-0 flex flex-col gap-1.5 border-b border-white/10 bg-slate-900 px-3 py-1.5">
-    <div class="flex items-center gap-2">
-      <div class="flex min-w-0 flex-1 items-center gap-1.5">
-        <button type="button" onclick="openDiagnosticModal()" class="flex h-11 min-w-0 flex-1 items-center gap-1.5 rounded-xl px-1 text-left transition active:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" title="Pārbaudīt savienojumu" aria-label="Savienojuma statuss un darbinieka iestatījumi">
-          <span id="mqttStatusDot" class="w-3.5 h-3.5 rounded-full bg-red-500 shrink-0 transition-colors"></span>
+    <div class="flex items-center gap-1">
+      <div class="flex min-w-0 flex-1 items-center gap-1">
+        <button type="button" onclick="openDiagnosticModal()" class="flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-xl px-1 text-left transition active:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" title="Pārbaudīt savienojumu" aria-label="Savienojuma statuss un darbinieka iestatījumi">
+          <span id="mqttStatusDot" class="w-3 h-3 rounded-full bg-red-500 shrink-0 transition-colors"></span>
           <span class="min-w-0 flex-1 leading-tight">
-            <span id="displayWorkerName" class="block w-full truncate text-xs sm:text-sm font-bold font-mono text-white underline decoration-dashed decoration-slate-500 underline-offset-2">Darbinieks</span>
-            <span id="mqttStatusText" class="block w-full min-w-0 whitespace-normal break-words text-[9px] leading-[10px] font-mono text-red-300" role="status" aria-live="polite">Nav savienojuma</span>
+            <span id="displayWorkerName" class="block w-full truncate text-base leading-4 sm:leading-5 font-bold font-mono text-white">Darbinieks</span>
+            <span id="mqttStatusText" class="block w-full min-w-0 whitespace-normal break-words text-[9px] leading-[10px] font-mono text-red-300" role="status" aria-live="polite">Atvienots</span>
           </span>
         </button>
-        <div id="syncBadge" class="hidden h-8 shrink-0 flex items-center gap-1.5 rounded-xl border border-amber-400/20 bg-amber-500/10 px-2 text-amber-300 shadow-xs" aria-live="polite">
-          <span id="unsyncedCount" class="text-[10px] leading-none font-mono font-bold tabular-nums">0</span>
-          <span aria-hidden="true" class="text-xs leading-none">⏳</span>
+        <div id="syncBadge" class="hidden h-7 shrink-0 flex items-center gap-1 rounded-lg border border-amber-400/20 bg-amber-500/10 px-1.5 text-amber-300 shadow-xs" aria-live="polite">
+          <span id="unsyncedCount" class="text-[9px] leading-none font-mono font-bold tabular-nums">0</span>
+          <span aria-hidden="true" class="text-[10px] leading-none">⏳</span>
         </div>
       </div>
 
-      <div class="flex shrink-0 items-center gap-1">
-        <button type="button" id="cameraPowerBtn" onclick="toggleCameraPower()" class="w-11 h-11 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/25 text-emerald-300 flex items-center justify-center active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Izslēgt kameru" title="Izslēgt kameru" aria-pressed="true">
+      <div class="flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <button type="button" id="cameraPowerBtn" onclick="toggleCameraPower()" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/25 text-emerald-300 flex items-center justify-center active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Izslēgt kameru" title="Izslēgt kameru" aria-pressed="true">
           <svg aria-hidden="true" viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2v10"></path>
             <path d="M18.36 6.64a9 9 0 1 1-12.72 0"></path>
           </svg>
         </button>
-        <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 text-slate-200 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Ieslēgt zibspuldzi" title="Zibspuldze" aria-pressed="false">🔦</button>
-        <details id="headerMoreMenu" class="relative">
-          <summary id="headerMoreBtn" class="flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-2xl font-bold leading-none text-slate-200 transition hover:bg-white/10 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Vairāk darbību" title="Vairāk darbību" aria-controls="headerMorePanel">
-            <span aria-hidden="true">⋯</span>
-          </summary>
-          <div id="headerMorePanel" class="absolute right-0 top-full z-[80] mt-2 w-56 rounded-2xl border border-white/10 bg-slate-900 p-2 shadow-2xl shadow-black/50 backdrop-blur-xl">
-            <p class="px-3 py-2 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">Papildu darbības</p>
-            <button type="button" id="cameraLensBtn" onclick="closeHeaderMoreMenu(true); switchCameraLens()" class="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-slate-200 transition hover:bg-white/10 active:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Pārslēgt kameru" title="Pārslēgt kameru" disabled>
-              <span aria-hidden="true" class="text-lg">📷</span>
-              <span>Pārslēgt kameru</span>
-            </button>
-            <div class="my-1 border-t border-white/10"></div>
-            <button type="button" id="headerSettingsBtn" onclick="closeHeaderMoreMenu(true); openSettingsModal()" class="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-slate-200 transition hover:bg-white/10 active:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Iestatījumi" title="Iestatījumi" aria-haspopup="dialog">
-              <span aria-hidden="true" class="text-lg">⚙️</span>
-              <span>Iestatījumi</span>
-            </button>
-          </div>
-        </details>
+        <button type="button" id="torchBtn" onclick="toggleTorch()" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-slate-200 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Ieslēgt zibspuldzi" title="Zibspuldze" aria-pressed="false">🔦</button>
+        <button type="button" id="cameraLensBtn" onclick="switchCameraLens()" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-slate-200 flex items-center justify-center text-lg active:scale-95 transition shadow-xs disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" aria-label="Pārslēgt kameru" title="Pārslēgt kameru" disabled>📷</button>
+        <button type="button" id="headerSettingsBtn" onclick="openSettingsModal()" class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-slate-200 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Iestatījumi" title="Iestatījumi" aria-haspopup="dialog">⚙️</button>
       </div>
     </div>
 
-    <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="group flex min-h-11 w-full items-center gap-2 rounded-2xl border border-indigo-400/20 bg-gradient-to-r from-indigo-500/10 via-indigo-500/5 to-white/[0.02] px-2.5 py-1.5 text-left shadow-sm transition hover:border-indigo-300/30 hover:from-indigo-500/15 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Mainīt veikalu, noskenējot QR kodu" title="Mainīt veikalu">
-      <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-400/10 text-lg text-indigo-300" aria-hidden="true">🏪</span>
+    <button type="button" id="changeStoreBtn" onclick="startStoreQrScan()" class="group flex min-h-12 w-full items-center gap-2 rounded-2xl border border-white/10 bg-slate-900/80 px-2 py-1.5 text-left shadow-sm transition hover:border-indigo-300/25 hover:bg-slate-800/90 active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400" aria-label="Veikals. Pieskarieties, lai mainītu veikalu." title="Pieskarieties, lai mainītu veikalu.">
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-400/10 text-lg text-indigo-300" aria-hidden="true">🏪</span>
       <span class="min-w-0 flex-1">
-        <span class="block text-[8px] font-bold uppercase leading-3 tracking-[0.16em] text-slate-400">Veikals</span>
-        <span id="currentRoomText" class="block whitespace-normal break-words text-xs font-semibold leading-4 text-slate-100">...</span>
+        <span class="flex min-w-0 items-center justify-between gap-2">
+          <span class="min-w-0">
+            <span class="block text-[8px] font-bold uppercase leading-3 tracking-[0.16em] text-slate-400">Veikals</span>
+            <span id="currentRoomText" class="block break-words text-sm font-bold leading-4 text-slate-100">...</span>
+          </span>
+          <span class="flex shrink-0 items-center gap-1.5 rounded-lg border border-indigo-300/15 bg-indigo-400/10 px-2 py-1 text-[9px] font-semibold text-indigo-200">
+            <span>Mainīt</span>
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5">
+              <path d="m7 4 6 6-6 6"></path>
+            </svg>
+          </span>
+        </span>
+        <span class="mt-1 block text-[10px] leading-3 text-slate-400">Pieskarieties, lai mainītu veikalu</span>
       </span>
-      <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 shrink-0 text-indigo-300 transition-transform group-hover:translate-x-0.5">
-        <path d="m7 4 6 6-6 6"></path>
-      </svg>
     </button>
   </header>
 
@@ -2126,8 +2116,8 @@
       if (roomEl) roomEl.innerText = storeName;
       const storeButton = document.getElementById('changeStoreBtn');
       if (storeButton) {
-        storeButton.setAttribute('aria-label', `Mainīt veikalu. Pašreizējais veikals: ${storeName}.`);
-        storeButton.title = `Mainīt veikalu: ${storeName}`;
+        storeButton.setAttribute('aria-label', `Pašreizējais veikals: ${storeName}. Pieskarieties, lai mainītu veikalu.`);
+        storeButton.title = `Pieskarieties, lai mainītu veikalu. Pašreizējais veikals: ${storeName}`;
       }
     }
 
@@ -2136,15 +2126,15 @@
       const label = document.getElementById('mqttStatusText');
       if (!dot) return;
       if (connected) {
-        dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse neon-pulse-emerald shrink-0";
+        dot.className = "w-3 h-3 rounded-full bg-emerald-500 animate-pulse neon-pulse-emerald shrink-0";
         if (label) {
           label.innerText = 'Savienots';
           label.className = 'block w-full min-w-0 whitespace-normal break-words text-[9px] leading-[10px] font-mono text-emerald-300';
         }
       } else {
-        dot.className = "w-3.5 h-3.5 rounded-full bg-red-500 shrink-0";
+        dot.className = "w-3 h-3 rounded-full bg-red-500 shrink-0";
         if (label) {
-          label.innerText = 'Nav savienojuma';
+          label.innerText = 'Atvienots';
           label.className = 'block w-full min-w-0 whitespace-normal break-words text-[9px] leading-[10px] font-mono text-red-300';
         }
       }
@@ -2961,8 +2951,8 @@
       button.title = actionLabel;
       button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
       button.className = enabled
-        ? 'w-11 h-11 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/25 text-emerald-300 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400'
-        : 'w-11 h-11 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-400 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400';
+        ? 'w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/25 text-emerald-300 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400'
+        : 'w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-400 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400';
       overlay.classList.toggle('hidden', enabled);
     }
 
@@ -3043,8 +3033,8 @@
       btn.setAttribute('aria-label', on ? 'Izslēgt zibspuldzi' : 'Ieslēgt zibspuldzi');
       btn.title = on ? 'Izslēgt zibspuldzi' : 'Ieslēgt zibspuldzi';
       btn.className = on 
-        ? 'w-11 h-11 rounded-2xl bg-amber-400 border border-amber-300 text-slate-950 flex items-center justify-center text-lg active:scale-95 transition shadow-md shadow-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300'
-        : 'w-11 h-11 rounded-2xl bg-white/5 border border-white/10 text-slate-200 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400';
+        ? 'w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-amber-400 border border-amber-300 text-slate-950 flex items-center justify-center text-lg active:scale-95 transition shadow-md shadow-amber-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300'
+        : 'w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-slate-200 flex items-center justify-center text-lg active:scale-95 transition shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400';
     }
 
     async function startStoreQrScan() {
@@ -4085,12 +4075,6 @@
       localStorage.setItem('ean_price_prompt', enabled ? 'true' : 'false');
     }
 
-    function closeHeaderMoreMenu(restoreFocus = false) {
-      const menu = document.getElementById('headerMoreMenu');
-      if (menu) menu.open = false;
-      if (restoreFocus) document.getElementById('headerMoreBtn')?.focus();
-    }
-
     async function openSettingsModal() {
       await stopCameraSafely();
       document.getElementById('settingDeviceId').value = getWorkerName();
@@ -4106,7 +4090,7 @@
       document.getElementById('settingsModal').classList.add('hidden');
       resetActivityTimer();
       startCameraWithSelectedLens();
-      document.getElementById('headerMoreBtn')?.focus();
+      document.getElementById('headerSettingsBtn')?.focus();
     }
 
     function saveSettings() {
@@ -4156,10 +4140,6 @@
     }
 
     document.addEventListener('pointerdown', resetActivityTimer);
-    document.addEventListener('pointerdown', event => {
-      const menu = document.getElementById('headerMoreMenu');
-      if (menu?.open && !menu.contains(event.target)) menu.open = false;
-    });
     const dialogReturnFocus = new WeakMap();
     function getDialogFocusableElements(dialog) {
       return [...dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
@@ -4220,16 +4200,13 @@
       if (openDialog) {
         event.preventDefault();
         openDialog[1]();
-      } else if (document.getElementById('headerMoreMenu')?.open) {
-        event.preventDefault();
-        closeHeaderMoreMenu(true);
       } else if (isScanningStoreQr && !isProcessingStoreQr) {
         event.preventDefault();
         cancelStoreQrScan();
       }
     });
 
-    const APP_UPDATE_VERSION = '2.51';
+    const APP_UPDATE_VERSION = '2.52';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;

@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.52] — 2026-10-28
+
+### Mainīts
+
+- Darbinieka vārds galvenē ir izteiktāks, un kameras, zibspuldzes, objektīva un iestatījumu pogas ir redzamas vienā rindā; īsais savienojuma statuss nepārklājas šauros ekrānos.
+- Veikala kartītei izcelts nosaukums un pievienota norāde “Pieskarieties, lai mainītu veikalu”.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.51] — 2026-10-28
 
 ### Mainīts
