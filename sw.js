@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ean-skeneris-shell-v2.55.1';
+const CACHE_NAME = 'ean-skeneris-shell-v2.55.2';
 const APP_SHELL = new URL('./index.html', self.registration.scope).href;
 const APP_ASSETS = [
   './index.html',

@@ -2,6 +2,13 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.55.2] — 2026-11-12
+
+### Labots
+
+- iOS Safari un PWA galvenei nodrošināta vismaz 28 px augšējā atkāpe, ņemot vērā ierīces drošo zonu; augšējās rindas pogas ir vismaz 44 × 44 px.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.55.1] — 2026-11-12
 
 ### Labots
