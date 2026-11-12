@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>EAN Skeneris Pro V2.55</title>
+  <title>EAN Skeneris Pro V2.55.1</title>
 
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
@@ -59,6 +59,19 @@
     .neon-pulse-emerald { box-shadow: 0 0 10px 1px rgba(16, 185, 129, 0.8); }
     html, body { width: 100%; height: 100%; overflow: hidden; }
     body { min-height: 0; height: 100vh; height: 100dvh; }
+    #appHeader {
+      position: relative;
+      z-index: 10;
+      box-sizing: border-box;
+      height: auto;
+      min-height: 40px;
+      padding-top: 12px;
+      padding-top: calc(constant(safe-area-inset-top) + 12px);
+      padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+      padding-left: max(12px, env(safe-area-inset-left, 0px));
+      padding-right: max(12px, env(safe-area-inset-right, 0px));
+    }
+    #appHeader button { min-width: 40px; min-height: 40px; }
     @media (max-height: 600px) {
       #cameraBoxContainer { height: 18vh; min-height: 6rem; max-height: 22vh; aspect-ratio: auto; }
       main { gap: 0.375rem; }
@@ -123,7 +136,7 @@
       <span class="mt-0.5 text-xl" aria-hidden="true">✨</span>
       <div class="min-w-0 flex-1">
         <p id="appUpdateTitle" class="text-sm font-bold text-white">Pieejama jauna lietotnes versija</p>
-        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.55 — Atjaunināta lokālo failu bezsaistes kešatmiņa; saderība ar Admin V2.58.</p>
+        <p id="appUpdateSummary" class="mt-1 text-xs leading-relaxed text-slate-300">V2.55.1 — Labota galvenes pogu pieejamība iPhone Safari un PWA režīmā.</p>
         <div class="mt-3 flex flex-wrap justify-end gap-2">
           <button type="button" id="appUpdateLaterBtn" class="min-h-10 rounded-xl border border-white/15 px-3 text-xs font-semibold text-slate-200 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-400">Vēlāk</button>
           <button type="button" id="appUpdateNowBtn" class="min-h-10 rounded-xl bg-emerald-500 px-3.5 text-xs font-bold text-slate-950 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300">Atjaunināt tagad</button>
@@ -133,7 +146,7 @@
   </aside>
 
   <!-- Galvene: darbinieks un visas vadības ikonas virs veikala maiņas kartītes -->
-  <header class="shrink-0 flex flex-col gap-1.5 border-b border-white/10 bg-slate-900 px-3 py-1.5">
+  <header id="appHeader" class="shrink-0 flex flex-col gap-1.5 border-b border-white/10 bg-slate-900 px-3 py-1.5">
     <div class="flex items-center gap-1">
       <div class="flex min-w-0 flex-1 items-center gap-1">
         <button type="button" onclick="openDiagnosticModal()" class="flex h-10 min-w-0 flex-1 items-center gap-1.5 rounded-xl px-1 text-left transition active:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" title="Pārbaudīt savienojumu" aria-label="Savienojuma statuss un darbinieka iestatījumi">
@@ -4237,7 +4250,7 @@
       }
     });
 
-    const APP_UPDATE_VERSION = '2.55';
+    const APP_UPDATE_VERSION = '2.55.1';
     const UPDATE_DISMISSED_KEY = `ean-skeneris-update-dismissed-${APP_UPDATE_VERSION}`;
     let pendingAppUpdate = null;
     let appUpdateRequested = false;

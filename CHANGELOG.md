@@ -2,6 +2,13 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.55.1] — 2026-11-12
+
+### Labots
+
+- Galvenes pogas novietotas zem iPhone drošās zonas, un to pieskāriena laukums ir vismaz 40 × 40 px.
+- Atjaunināta PWA kešatmiņas versija.
+
 ## [2.55] — 2026-11-12
 
 ### Mainīts
