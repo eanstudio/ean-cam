@@ -4,6 +4,7 @@ EAN Skeneris ir mobilā svītrkodu skenera tīmekļa lietotne (PWA). Tā darboja
 
 ## Projekta statuss
 
+- Skenera V2.55 laidienā atjaunināta lokālo PWA resursu bezsaistes kešatmiņa; saziņas protokols paliek saderīgs ar Admin V2.58.
 - Publiskā lietotne ir skeneris (`index.html`) kopā ar manifestu, servisa darbinieku un ikonām.
 - Admin panelis tiek uzturēts atsevišķā privātajā `ean-cam-admin` repozitorijā un nav šī publiskā repozitorija daļa. Admin faili (`admin.html`, `admin.css`, `admin.js`, `admin-*.js`) ir ignorēti ar `.gitignore`, un tiem šeit nav jāatrodas.
 - Šī repozitorija `CHANGELOG.md` ir publiskās skenera/PWA lietotnes žurnāls. Admin paneļa izmaiņas dokumentē tikai privātajā `ean-cam-admin/CHANGELOG.md`.
@@ -58,7 +59,7 @@ Admin paneļa labās puses panelī cilne **Notikumi** rāda skenēšanas un admi
 - iPhone/iPad ierīcē atver vietni Safari un izvēlies **Share → Add to Home Screen**.
 - Pēc lietotnes atjaunināšanas atver to tiešsaistē vai pārlādē lapu, lai pārlūks saņemtu jauno versiju.
 
-Servisa darbinieks kešo lietotnes sākuma lapu un var to atgriezt bezsaistē. Tas nenozīmē, ka visas funkcijas ir pieejamas bez interneta: katalogs, ārējās bibliotēkas un sinhronizācija var būt atkarīga no tīkla. Skenējumi un neizsūtītās darbības tiek glabātas ierīcē, līdz tās var sinhronizēt.
+Servisa darbinieks instalēšanas laikā kešo sākuma lapu, manifestu, servisa darbinieku un visas lokālās ikonas. Pēc sekmīgas instalēšanas šie resursi ir pieejami bezsaistē. Tas nenozīmē, ka visas funkcijas ir pieejamas bez interneta: ārējās CDN bibliotēkas var nebūt pieejamas bezsaistē, un kataloga atjaunināšanai un sinhronizācijai vajadzīgs savienojums. Skenējumi un neizsūtītās darbības tiek glabātas ierīcē, līdz tās var sinhronizēt.
 
 ## Admin paneļa veikalu profili
 
@@ -92,7 +93,7 @@ Admin panelis APK būvēšanas darbplūsmā nav iekļauts.
 | --- | --- |
 | `index.html` | Skenera lietotne un tās lietotāja saskarne |
 | `manifest.json` | PWA nosaukums, sākuma adrese un instalēšanas ikonas |
-| `sw.js` | PWA kešošana un bezsaistes sākuma lapas atgriešana |
+| `sw.js` | Lokālo PWA resursu kešošana un bezsaistes sākuma lapas atgriešana |
 | `icons/` | PWA un iOS ikonas |
 | `.github/workflows/build-apk.yml` | Android debug APK izveides darbplūsma |
 | `CHANGELOG.md` | Lietotājam nozīmīgo izmaiņu vēsture |

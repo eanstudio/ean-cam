@@ -36,6 +36,7 @@
   - Kodējuma `windows-1257` apstrādi failam `DataToScaner.txt`.
 - **PWA un ceļu savietojamība:** Mobilajā skenerī visiem ceļiem uz ikonām, skriptiem un manifestu jābūt relatīviem (`./`), lai saglabātu saderību ar GitHub Pages apakšmapēm.
 - **Versiju fiksēšana:** skenerim (`index.html` virsraksts, `APP_UPDATE_VERSION`, `appUpdateSummary`, `sw.js` `CACHE_NAME`) un publiskajam `CHANGELOG.md` šajā repo; adminam atsevišķi savā repo (`admin.html`, `CHANGELOG.md`, `VERSIONS.md`, git tags `admin-vX.YY`). Abu versiju numerācija ir neatkarīga.
+- **V2.55:** lokālie PWA faili un ikonas iekļauti servisa darbinieka bezsaistes kešatmiņā; protokols saglabāts saderīgs ar Admin V2.58. Ārējās CDN bibliotēkas nav garantēti pieejamas bezsaistē.
 - **Git:** commit ziņas latviski, ar trailer `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`. Abos repo lokāli uzstādīts autors `Jānis Lubiņš <256196125+lubinsh@users.noreply.github.com>` (GitHub noreply); darba e-pasts (`@aibe.lv`) nekad nedrīkst parādīties commitos vai failos. Pirms commit pārbaudi `git config user.email`; nekad neizdomā e-pastu. Neiekļauj commitā failus, ko lietotājs nav lūdzis.
 ## 4. Autonomā izpilde un pašpārbaudes cikls (Iterative Problem Solving)
 

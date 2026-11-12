@@ -2,6 +2,14 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.55] — 2026-11-12
+
+### Mainīts
+
+- Atjaunināta lokālo PWA failu bezsaistes kešatmiņa: sākuma lapa, manifests, servisa darbinieks un visas ikonas.
+- Saglabāta saderība ar Admin V2.58, nemainot saziņas protokolu.
+- Ārējās CDN bibliotēkas un sinhronizācija joprojām var būt atkarīgas no tīkla.
+
 ## [2.54] — 2026-10-28
 
 ### Mainīts
