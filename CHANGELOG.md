@@ -2,6 +2,13 @@
 
 Šeit hronoloģiski fiksē lietotājam nozīmīgas izmaiņas. Jaunākās izmaiņas ir augšā. **Unreleased** sadaļā ir tikai vēl nepublicētas izmaiņas. Publicētu izmaiņu sadaļām piešķir laidiena versiju un datumu, kad ir saskaņota un atjaunināta lietotnes versija.
 
+## [2.55.3] — 2026-11-16
+
+### Mainīts
+
+- Pēc ierīces aizmiršanas atkārtota pievienošana notiek, skenera lietotnē no jauna noskenējot veikala QR kodu.
+- Ierīces pieeju piešķir Admin; skenējumu vēsture un bezsaistes rinda pēc sesijas atsaukšanas saglabājas.
+
 ## [2.55.2] — 2026-11-12
 
 ### Labots
