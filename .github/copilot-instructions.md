@@ -57,3 +57,11 @@ Kad tiek dots uzdevums novērst kļūdu vai ieviest jaunu funkciju:
 
 3. **Gatavības kritērijs (Definition of Done):**
    - Uzdevums tiek uzskatīts par pabeigtu TIKAI tad, kad kods ir pilnībā uzrakstīts, saglabāts failā, atbilst projekta aizsargmehānismiem un ir gatavs tūlītējai testēšanai bez manuālas koda pielāgošanas.
+
+## Mobilā UX & PWA kvalitātes standarts
+- UX Mobile aģents strādā tikai ar šī publiskā repozitorija failiem; tas nedrīkst atsaukties uz citiem repozitorijiem vai lasīt ārpus šīs mapes.
+- Pirms mobilā izkārtojuma izmaiņām pārbaudi `360x800`, `393x852` un `430x932` izšķirtspēju, `100dvh` izkārtojumu un to, ka visa lapa neritinās; paredzētie satura apgabali drīkst ritināties.
+- Atsevišķi pārbaudi iOS Safari un Home Screen PWA drošās zonas: parastā Safari logā augšējā atkāpe ir vismaz `28px`, PWA režīmā tiek ievērota pilna `env(safe-area-inset-top)` vērtība, un apakšā tiek lietota `env(safe-area-inset-bottom)`.
+- Skārienvadīklām jābūt vismaz `44x44px`, atbilstoši jālieto `touch-action: manipulation`, un tās nedrīkst pārklāt kameras `<video>` vai skatu meklētāju.
+- Statusa rindās tekstam jābūt salasāmam bez nekontrolētas apraušanas; `scrollWidth > clientWidth` ir pārplūdes pazīme, kas jānovērš, neslēpjot svarīgu statusa informāciju.
+- Pārbaudi pārlūkā mērķa izmērus un iOS Safari/PWA režīmus, ja tie pieejami; skaidri norādi, kuras pārbaudes nav izpildītas.
